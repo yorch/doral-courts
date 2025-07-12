@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+"""
+Doral Courts CLI - Command-line interface for checking tennis and pickleball court availability.
+
+MIT License
+Copyright (c) 2025 Jorge Barnaby
+"""
+
 import click
 import os
 from rich.console import Console
