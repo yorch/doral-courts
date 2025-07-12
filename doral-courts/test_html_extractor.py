@@ -30,7 +30,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             name="Test Court",
             sport_type="Tennis",
             location="Test Location",
-            surface_type="Hard Court",
+            capacity="3",
             availability_status="Available",
             date="07/11/2025",
             time_slots=time_slots,
@@ -47,7 +47,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             name="Test Court",
             sport_type="Tennis",
             location="Test Location",
-            surface_type="Hard Court",
+            capacity="3",
             availability_status="No Schedule",
             date="07/11/2025",
             time_slots=[]
@@ -66,7 +66,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             name="Test Court",
             sport_type="Tennis",
             location="Test Location",
-            surface_type="Hard Court",
+            capacity="3",
             availability_status="Fully Booked",
             date="07/11/2025",
             time_slots=time_slots

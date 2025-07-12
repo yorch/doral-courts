@@ -47,7 +47,7 @@ def save_json_data(courts: List[Court], filename_suffix: str = "", source_url: s
             "name": court.name,
             "sport_type": court.sport_type,
             "location": court.location,
-            "surface_type": court.surface_type,
+            "capacity": court.capacity,
             "availability_status": court.availability_status,
             "date": court.date,
             "price": court.price,
@@ -86,7 +86,7 @@ def display_courts_table(courts: List[Court]):
     table.add_column("Date", style="green")
     table.add_column("Time Slots", style="yellow")
     table.add_column("Status", style="bold")
-    table.add_column("Surface", style="blue")
+    table.add_column("Capacity", style="blue")
     table.add_column("Price", style="green")
 
     for court in courts:
@@ -112,7 +112,7 @@ def display_courts_table(courts: List[Court]):
             court.date,
             time_display,
             f"{status_style}{court.availability_status}[/]",
-            court.surface_type,
+            court.capacity,
             court.price or "N/A"
         )
 
@@ -163,7 +163,7 @@ def display_detailed_court_data(courts: List[Court], base_url: str = None):
 [cyan]Name:[/cyan] {court.name}
 [cyan]Sport:[/cyan] {court.sport_type}
 [cyan]Location:[/cyan] {court.location}
-[cyan]Surface:[/cyan] {court.surface_type}
+[cyan]Capacity:[/cyan] {court.capacity}
 [cyan]Date:[/cyan] {court.date}
 [cyan]Status:[/cyan] {court.availability_status}
 [cyan]Price:[/cyan] {court.price or 'N/A'}

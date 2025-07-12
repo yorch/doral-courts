@@ -17,7 +17,7 @@ class Court:
     name: str
     sport_type: str
     location: str
-    surface_type: str
+    capacity: str
     availability_status: str
     date: str
     time_slots: List[TimeSlot]
@@ -112,9 +112,6 @@ class CourtAvailabilityHTMLExtractor:
                     price_cell = row.find('td', {'data-title': 'Price'})
                     price = price_cell.get_text(strip=True) if price_cell else None
 
-                    # Set surface type based on sport type
-                    surface_type = "Hard Court"
-
                     # Extract time slots from the cart-blocks section
                     time_slots = self._extract_time_slots(row)
 
@@ -132,7 +129,7 @@ class CourtAvailabilityHTMLExtractor:
                         name=name,
                         sport_type=sport_type,
                         location=location,
-                        surface_type=surface_type,
+                        capacity=capacity,
                         availability_status=availability_status,
                         date=date,
                         time_slots=time_slots,

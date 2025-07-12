@@ -25,7 +25,7 @@ class Database:
                     name TEXT NOT NULL,
                     sport_type TEXT NOT NULL,
                     location TEXT NOT NULL,
-                    surface_type TEXT NOT NULL,
+                    capacity TEXT NOT NULL,
                     availability_status TEXT NOT NULL,
                     date TEXT NOT NULL,
                     time_slot TEXT NOT NULL,
@@ -34,6 +34,13 @@ class Database:
                     UNIQUE(name, date, time_slot)
                 )
             ''')
+
+            # Migration: Check if surface_type column exists and rename it to capacity
+            cursor.execute("PRAGMA table_info(courts)")
+            columns = [column[1] for column in cursor.fetchall()]
+            if 'surface_type' in columns and 'capacity' not in columns:
+                logger.info("Migrating database: renaming surface_type to capacity")
+                cursor.execute('ALTER TABLE courts RENAME COLUMN surface_type TO capacity')
             logger.debug("Created courts table")
 
             cursor.execute('''
@@ -101,14 +108,14 @@ class Database:
                     # Insert or update the main court record
                     cursor.execute('''
                         INSERT OR REPLACE INTO courts
-                        (name, sport_type, location, surface_type, availability_status,
+                        (name, sport_type, location, capacity, availability_status,
                          date, time_slot, price, last_updated)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ''', (
                         court.name,
                         court.sport_type,
                         court.location,
-                        court.surface_type,
+                        court.capacity,
                         court.availability_status,
                         court.date,
                         court.time_slot,
@@ -170,7 +177,7 @@ class Database:
         logger.debug("Querying courts with filters - Sport: %s, Status: %s, Date: %s",
                     sport_type, availability_status, date)
 
-        query = "SELECT id, name, sport_type, location, surface_type, availability_status, date, time_slot, price FROM courts WHERE 1=1"
+        query = "SELECT id, name, sport_type, location, capacity, availability_status, date, time_slot, price FROM courts WHERE 1=1"
         params = []
 
         if sport_type:
@@ -207,7 +214,7 @@ class Database:
                 name=row[1],
                 sport_type=row[2],
                 location=row[3],
-                surface_type=row[4],
+                capacity=row[4],
                 availability_status=row[5],
                 date=row[6],
                 time_slots=time_slots,
