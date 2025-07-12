@@ -33,81 +33,80 @@ def cli(ctx, verbose, save_data):
 @click.option('--status', type=click.Choice(['available', 'booked', 'maintenance'], case_sensitive=False),
               help='Filter by availability status')
 @click.option('--date', help='Date to check (MM/DD/YYYY format)')
-@click.option('--refresh', is_flag=True, help='Fetch fresh data from website')
 @click.pass_context
-def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], refresh: bool):
-    """List available courts with optional filters."""
+def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str]):
+    """List available courts with optional filters. Always fetches fresh data from website."""
     verbose = ctx.obj.get('verbose', False)
 
-    logger.info("Starting court listing command")
-    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}, Refresh: {refresh}")
+    logger.info("Starting court listing command - fetching fresh data")
+    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}")
 
     db = Database()
 
-    # Check if we need to fetch fresh data
-    existing_courts = db.get_courts()
-    logger.debug(f"Found {len(existing_courts)} existing courts in database")
+    # Always fetch fresh data from website
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching court data...", total=None)
 
-    if refresh or not existing_courts:
-        logger.info("Fetching fresh data from website")
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Fetching court data...", total=None)
+        scraper = Scraper()
 
-            scraper = Scraper()
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+        else:
+            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            html_content = ""
 
-            # Check if we should save data
-            save_data = ctx.obj.get('save_data', False)
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
             if save_data:
-                courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
-            else:
-                courts = scraper.fetch_courts(date=date, sport_filter=sport)
-                html_content = ""
+                try:
+                    html_path = save_html_data(html_content, "_list")
+                    json_path = save_json_data(courts, "_list", scraper.get_last_request_url())
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            console.print("[yellow]The website may be temporarily unavailable or blocking requests.[/yellow]")
+            return
 
-            if courts:
-                logger.info(f"Successfully fetched {len(courts)} courts from website")
-                inserted_count = db.insert_courts(courts)
-                logger.debug(f"Inserted/updated {inserted_count} courts in database")
-                progress.update(task, description=f"Fetched {len(courts)} courts")
+    # Apply filters to fresh data
+    logger.debug("Applying filters to fresh data")
+    filtered_courts = courts
 
-                # Save data if requested
-                if save_data:
-                    try:
-                        html_path = save_html_data(html_content, "_list")
-                        json_path = save_json_data(courts, "_list", scraper.get_last_request_url())
-                        console.print(f"[green]Data saved to:[/green]")
-                        console.print(f"  HTML: {html_path}")
-                        console.print(f"  JSON: {json_path}")
-                    except Exception as e:
-                        logger.error(f"Error saving data: {e}")
-                        console.print(f"[red]Error saving data: {e}[/red]")
-            else:
-                logger.error("No court data could be retrieved from website")
-                console.print("[red]Unable to fetch court data from website.[/red]")
-                console.print("[yellow]The website may be temporarily unavailable or blocking requests.[/yellow]")
-    else:
-        logger.info("Using existing data from database")
+    if sport:
+        filtered_courts = [court for court in filtered_courts if court.sport_type.lower() == sport.lower()]
+        logger.debug(f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts")
 
-    # Get courts from database with filters
-    logger.debug("Applying filters and retrieving courts from database")
-    courts = db.get_courts(
-        sport_type=sport.title() if sport else None,
-        availability_status=status.title() if status else None,
-        date=date
-    )
+    if status:
+        filtered_courts = [court for court in filtered_courts if status.lower() in court.availability_status.lower()]
+        logger.debug(f"Applied status filter '{status}': {len(filtered_courts)} courts")
 
-    logger.info(f"Found {len(courts)} courts matching criteria")
+    logger.info(f"Found {len(filtered_courts)} courts matching criteria")
 
-    if not courts:
+    if not filtered_courts:
         console.print("[red]No courts found matching your criteria.[/red]")
         return
 
     # Display courts in a table
     logger.debug("Displaying courts table")
-    display_courts_table(courts)
+    display_courts_table(filtered_courts)
 
 @cli.command()
 @click.pass_context
@@ -153,13 +152,55 @@ Sport Breakdown:
 @click.option('--available-only', is_flag=True, help='Show only available time slots')
 @click.pass_context
 def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
-    """Show detailed time slot availability for courts."""
-    logger.info("Starting detailed time slots display")
+    """Show detailed time slot availability for courts. Always fetches fresh data."""
+    logger.info("Starting detailed time slots display - fetching fresh data")
     logger.debug(f"Filters - Court: {court}, Date: {date}, Available only: {available_only}")
 
     db = Database()
-    courts = db.get_courts(date=date)
 
+    # Always fetch fresh data from website
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching court data...", total=None)
+
+        scraper = Scraper()
+
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=date)
+        else:
+            courts = scraper.fetch_courts(date=date)
+            html_content = ""
+
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
+            if save_data:
+                try:
+                    html_path = save_html_data(html_content, "_slots")
+                    json_path = save_json_data(courts, "_slots", scraper.get_last_request_url())
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            return
+
+    # Apply court filter to fresh data
     if court:
         courts = [c for c in courts if court.lower() in c.name.lower()]
         if not courts:
@@ -208,85 +249,81 @@ def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
 @cli.command()
 @click.option('--mode', type=click.Choice(['detailed', 'summary'], case_sensitive=False),
               default='detailed', help='Display mode: detailed (full court info) or summary (time slots analysis)')
-@click.option('--refresh', is_flag=True, help='Fetch fresh data from website before displaying')
 @click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
 @click.option('--date', help='Date to check (MM/DD/YYYY format)')
 @click.pass_context
-def data(ctx, mode: str, refresh: bool, sport: Optional[str], date: Optional[str]):
-    """Display comprehensive view of all scraped data from the website."""
-    logger.info("Starting comprehensive data display")
-    logger.debug(f"Mode: {mode}, Refresh: {refresh}, Sport: {sport}, Date: {date}")
+def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
+    """Display comprehensive view of all scraped data from the website. Always fetches fresh data."""
+    logger.info("Starting comprehensive data display - fetching fresh data")
+    logger.debug(f"Mode: {mode}, Sport: {sport}, Date: {date}")
 
     db = Database()
 
-    # Initialize scraper and URL tracking
+    # Initialize scraper and always fetch fresh data
     scraper = Scraper()
-    actual_url = None
 
-    # Refresh data if requested
-    if refresh:
-        logger.info("Fetching fresh data from website")
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            console=console,
-        ) as progress:
-            task = progress.add_task("Fetching latest data...", total=None)
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching latest data...", total=None)
 
-            # Check if we should save data
-            save_data = ctx.obj.get('save_data', False)
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+        else:
+            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            html_content = ""
+
+        # Get the actual URL used for the request
+        actual_url = scraper.get_last_request_url()
+
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
             if save_data:
-                courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
-            else:
-                courts = scraper.fetch_courts(date=date, sport_filter=sport)
-                html_content = ""
+                try:
+                    html_path = save_html_data(html_content, "_data")
+                    json_path = save_json_data(courts, "_data", actual_url)
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            return
 
-            # Get the actual URL used for the request
-            actual_url = scraper.get_last_request_url()
+    # Apply filters to fresh data
+    logger.debug("Applying filters to fresh data")
+    filtered_courts = courts
 
-            if courts:
-                logger.info(f"Successfully fetched {len(courts)} courts from website")
-                inserted_count = db.insert_courts(courts)
-                logger.debug(f"Inserted/updated {inserted_count} courts in database")
-                progress.update(task, description=f"Fetched {len(courts)} courts")
+    if sport:
+        filtered_courts = [court for court in filtered_courts if court.sport_type.lower() == sport.lower()]
+        logger.debug(f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts")
 
-                # Save data if requested
-                if save_data:
-                    try:
-                        html_path = save_html_data(html_content, "_data")
-                        json_path = save_json_data(courts, "_data", actual_url)
-                        console.print(f"[green]Data saved to:[/green]")
-                        console.print(f"  HTML: {html_path}")
-                        console.print(f"  JSON: {json_path}")
-                    except Exception as e:
-                        logger.error(f"Error saving data: {e}")
-                        console.print(f"[red]Error saving data: {e}[/red]")
-            else:
-                logger.error("No court data could be retrieved from website")
-                console.print("[red]Unable to fetch court data from website.[/red]")
+    logger.info(f"Found {len(filtered_courts)} courts for comprehensive display")
 
-    # Get courts from database
-    courts = db.get_courts(
-        sport_type=sport.title() if sport else None,
-        date=date
-    )
-
-    logger.info(f"Found {len(courts)} courts for comprehensive display")
-
-    if not courts:
+    if not filtered_courts:
         console.print("[red]No courts found matching your criteria.[/red]")
-        console.print("[blue]Try running: doral-courts data --refresh[/blue]")
         return
-
-    # Use actual URL if we refreshed, otherwise use base URL with note
-    display_url = actual_url if actual_url else f"{scraper.base_url} (cached data)"
 
     # Display data based on mode
     if mode == 'detailed':
-        display_detailed_court_data(courts, display_url)
+        display_detailed_court_data(filtered_courts, actual_url)
     else:  # summary mode
-        display_time_slots_summary(courts, display_url)
+        display_time_slots_summary(filtered_courts, actual_url)
 
 @cli.command()
 @click.option('--days', default=7, help='Remove data older than N days')
@@ -313,6 +350,50 @@ def cleanup(ctx, days: int):
     logger.debug(f"Courts remaining: {total_after}")
 
     console.print(f"[green]Cleaned up data older than {days} days. Removed {removed_count} records.[/green]")
+
+@cli.command()
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
+              help='Filter by sport type')
+@click.option('--status', type=click.Choice(['available', 'booked', 'maintenance'], case_sensitive=False),
+              help='Filter by availability status')
+@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--mode', type=click.Choice(['table', 'detailed', 'summary'], case_sensitive=False),
+              default='table', help='Display mode: table (simple), detailed (full info), or summary (analysis)')
+@click.pass_context
+def history(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], mode: str):
+    """View historical court data from database (cached data)."""
+    logger.info("Starting historical data display from database")
+    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}, Mode: {mode}")
+
+    db = Database()
+
+    # Get courts from database with filters
+    logger.debug("Retrieving historical data from database")
+    courts = db.get_courts(
+        sport_type=sport.title() if sport else None,
+        availability_status=status.title() if status else None,
+        date=date
+    )
+
+    logger.info(f"Found {len(courts)} historical records matching criteria")
+
+    if not courts:
+        console.print("[red]No historical court data found matching your criteria.[/red]")
+        console.print("[blue]Try running other commands to fetch fresh data first.[/blue]")
+        return
+
+    # Display historical data based on mode
+    if mode == 'table':
+        # Simple table display
+        display_courts_table(courts)
+    elif mode == 'detailed':
+        # Detailed display with database note
+        display_url = "Database (historical data)"
+        display_detailed_court_data(courts, display_url)
+    else:  # summary mode
+        # Summary analysis with database note
+        display_url = "Database (historical data)"
+        display_time_slots_summary(courts, display_url)
 
 @cli.command()
 @click.option('--interval', default=300, help='Update interval in seconds (default: 5 minutes)')
