@@ -43,104 +43,108 @@ class CourtAvailabilityHTMLExtractor:
         # Debug: let's examine the HTML structure
         logger.debug("HTML title: %s", soup.title.string if soup.title else "No title")
 
-        # Look for the specific table with court data
-        court_table = soup.find('table', id='frwebsearch_output_table')
-        if not court_table:
-            logger.warning("Could not find frwebsearch_output_table")
+        # Look for ALL tables with court data (there are multiple tables, each with the same ID)
+        court_tables = soup.find_all('table', id='frwebsearch_output_table')
+        if not court_tables:
+            logger.warning("Could not find any frwebsearch_output_table")
             return courts
 
-        logger.debug("Found frwebsearch_output_table")
+        logger.debug("Found %d frwebsearch_output_tables", len(court_tables))
 
-        # Find all rows in the tbody
-        tbody = court_table.find('tbody')
-        if not tbody:
-            logger.warning("Could not find tbody in court table")
-            return courts
-
-        # Get all rows, but filter out cart-blocks rows
-        all_rows = tbody.find_all('tr')
-        court_rows = [row for row in all_rows if not row.find('td', class_='cart-blocks')]
-
-        logger.debug("Found %d court data rows in table", len(court_rows))
-
-        for i, row in enumerate(court_rows):
-            logger.debug("Processing court row %d/%d", i + 1, len(court_rows))
-            try:
-                # Extract data from label-cell elements using data-title attributes
-                cells = row.find_all('td', class_='label-cell')
-
-                if len(cells) < 4:
-                    logger.debug("Row %d has insufficient cells (%d), skipping", i + 1, len(cells))
-                    continue
-
-                # Extract date from dateblock or data-title="Date"
-                date_cell = row.find('td', {'data-title': 'Date'})
-                if date_cell:
-                    # Try to extract from dateblock
-                    dateblock = date_cell.find('span', class_='dateblock')
-                    if dateblock and dateblock.get('data-tooltip'):
-                        date = dateblock['data-tooltip']
-                    else:
-                        date = date_cell.get_text(strip=True)
-                else:
-                    date = datetime.now().strftime("%m/%d/%Y")
-
-                # Extract facility description (court name)
-                name_cell = row.find('td', {'data-title': 'Facility Description'})
-                name = name_cell.get_text(strip=True) if name_cell else "Unknown Court"
-
-                # Extract location description
-                location_cell = row.find('td', {'data-title': 'Location Description'})
-                location = location_cell.get_text(strip=True) if location_cell else "Unknown Location"
-
-                # Extract class description (sport type)
-                class_cell = row.find('td', {'data-title': 'Class Description'})
-                class_description = class_cell.get_text(strip=True) if class_cell else ""
-
-                # Determine sport type from class description or name
-                sport_type = "Tennis" if "tennis" in class_description.lower() or "tennis" in name.lower() else "Pickleball"
-
-                # Extract capacity
-                capacity_cell = row.find('td', {'data-title': 'Capacity'})
-                capacity = capacity_cell.get_text(strip=True) if capacity_cell else "N/A"
-
-                # Extract price
-                price_cell = row.find('td', {'data-title': 'Price'})
-                price = price_cell.get_text(strip=True) if price_cell else None
-
-                # Set surface type based on sport type
-                surface_type = "Hard Court"
-
-                # Extract time slots from the cart-blocks section
-                time_slots = self._extract_time_slots(row)
-
-                # Determine overall availability status based on time slots
-                if time_slots:
-                    available_slots = [slot for slot in time_slots if slot.status == "Available"]
-                    if available_slots:
-                        availability_status = "Available"
-                    else:
-                        availability_status = "Fully Booked"
-                else:
-                    availability_status = "No Schedule"
-
-                court = Court(
-                    name=name,
-                    sport_type=sport_type,
-                    location=location,
-                    surface_type=surface_type,
-                    availability_status=availability_status,
-                    date=date,
-                    time_slots=time_slots,
-                    price=price
-                )
-
-                courts.append(court)
-                logger.debug("Successfully parsed court: %s (%s) at %s on %s", name, sport_type, location, date)
-
-            except Exception as e:
-                logger.warning("Error parsing court row %d: %s", i + 1, e)
+        # Process each table separately
+        for table_index, court_table in enumerate(court_tables):
+            logger.debug("Processing table %d/%d", table_index + 1, len(court_tables))
+            
+            # Find all rows in the tbody
+            tbody = court_table.find('tbody')
+            if not tbody:
+                logger.debug("Could not find tbody in court table %d, skipping", table_index + 1)
                 continue
+
+            # Get all rows, but filter out cart-blocks rows
+            all_rows = tbody.find_all('tr')
+            court_rows = [row for row in all_rows if not row.find('td', class_='cart-blocks')]
+
+            logger.debug("Found %d court data rows in table %d", len(court_rows), table_index + 1)
+
+            for i, row in enumerate(court_rows):
+                logger.debug("Processing court row %d/%d in table %d", i + 1, len(court_rows), table_index + 1)
+                try:
+                    # Extract data from label-cell elements using data-title attributes
+                    cells = row.find_all('td', class_='label-cell')
+
+                    if len(cells) < 4:
+                        logger.debug("Row %d has insufficient cells (%d), skipping", i + 1, len(cells))
+                        continue
+
+                    # Extract date from dateblock or data-title="Date"
+                    date_cell = row.find('td', {'data-title': 'Date'})
+                    if date_cell:
+                        # Try to extract from dateblock
+                        dateblock = date_cell.find('span', class_='dateblock')
+                        if dateblock and dateblock.get('data-tooltip'):
+                            date = dateblock['data-tooltip']
+                        else:
+                            date = date_cell.get_text(strip=True)
+                    else:
+                        date = datetime.now().strftime("%m/%d/%Y")
+
+                    # Extract facility description (court name)
+                    name_cell = row.find('td', {'data-title': 'Facility Description'})
+                    name = name_cell.get_text(strip=True) if name_cell else "Unknown Court"
+
+                    # Extract location description
+                    location_cell = row.find('td', {'data-title': 'Location Description'})
+                    location = location_cell.get_text(strip=True) if location_cell else "Unknown Location"
+
+                    # Extract class description (sport type)
+                    class_cell = row.find('td', {'data-title': 'Class Description'})
+                    class_description = class_cell.get_text(strip=True) if class_cell else ""
+
+                    # Determine sport type from class description or name
+                    sport_type = "Tennis" if "tennis" in class_description.lower() or "tennis" in name.lower() else "Pickleball"
+
+                    # Extract capacity
+                    capacity_cell = row.find('td', {'data-title': 'Capacity'})
+                    capacity = capacity_cell.get_text(strip=True) if capacity_cell else "N/A"
+
+                    # Extract price
+                    price_cell = row.find('td', {'data-title': 'Price'})
+                    price = price_cell.get_text(strip=True) if price_cell else None
+
+                    # Set surface type based on sport type
+                    surface_type = "Hard Court"
+
+                    # Extract time slots from the cart-blocks section
+                    time_slots = self._extract_time_slots(row)
+
+                    # Determine overall availability status based on time slots
+                    if time_slots:
+                        available_slots = [slot for slot in time_slots if slot.status == "Available"]
+                        if available_slots:
+                            availability_status = "Available"
+                        else:
+                            availability_status = "Fully Booked"
+                    else:
+                        availability_status = "No Schedule"
+
+                    court = Court(
+                        name=name,
+                        sport_type=sport_type,
+                        location=location,
+                        surface_type=surface_type,
+                        availability_status=availability_status,
+                        date=date,
+                        time_slots=time_slots,
+                        price=price
+                    )
+
+                    courts.append(court)
+                    logger.debug("Successfully parsed court: %s (%s) at %s on %s", name, sport_type, location, date)
+
+                except Exception as e:
+                    logger.warning("Error parsing court row %d in table %d: %s", i + 1, table_index + 1, e)
+                    continue
 
         logger.info("Parsed %d courts from HTML", len(courts))
         return courts

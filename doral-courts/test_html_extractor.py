@@ -480,7 +480,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         # Check for specific log messages
         debug_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
         self.assertTrue(any("Starting court data parsing" in call for call in debug_calls))
-        self.assertTrue(any("Found frwebsearch_output_table" in call for call in debug_calls))
+        self.assertTrue(any("frwebsearch_output_tables" in call for call in debug_calls))
 
     def test_extract_time_slots_malformed_time_range(self):
         """Test parsing time slots with malformed time range."""
