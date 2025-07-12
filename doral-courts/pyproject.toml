@@ -13,3 +13,8 @@ dependencies = [
 
 [project.scripts]
 doral-courts = "main:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
