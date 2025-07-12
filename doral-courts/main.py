@@ -1,29 +1,34 @@
 import click
+import os
 from rich.console import Console
-from rich.table import Table
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from datetime import datetime
-from scraper import DoralCourtsScraper, Court
-from database import DoralCourtsDB
+from scraper import Scraper
+from html_extractor import Court, TimeSlot
+from database import Database
 from logger import setup_logging, get_logger
+from utils import save_html_data, save_json_data, display_courts_table
 from typing import List, Optional
 
 console = Console()
 logger = get_logger(__name__)
 
+
 @click.group()
 @click.version_option(version="0.1.0")
 @click.option('--verbose', '-v', is_flag=True, help='Enable verbose logging')
+@click.option('--save-data', is_flag=True, help='Save retrieved HTML and JSON data to files')
 @click.pass_context
-def cli(ctx, verbose):
+def cli(ctx, verbose, save_data):
     """Doral Courts CLI - Display tennis and pickleball court availability."""
     ctx.ensure_object(dict)
     ctx.obj['verbose'] = verbose
+    ctx.obj['save_data'] = save_data
     setup_logging(verbose=verbose)
 
 @cli.command()
-@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False), 
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
 @click.option('--status', type=click.Choice(['available', 'booked', 'maintenance'], case_sensitive=False),
               help='Filter by availability status')
@@ -33,16 +38,16 @@ def cli(ctx, verbose):
 def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], refresh: bool):
     """List available courts with optional filters."""
     verbose = ctx.obj.get('verbose', False)
-    
+
     logger.info("Starting court listing command")
     logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}, Refresh: {refresh}")
-    
-    db = DoralCourtsDB()
-    
+
+    db = Database()
+
     # Check if we need to fetch fresh data
     existing_courts = db.get_courts()
     logger.debug(f"Found {len(existing_courts)} existing courts in database")
-    
+
     if refresh or not existing_courts:
         logger.info("Fetching fresh data from website")
         with Progress(
@@ -51,21 +56,41 @@ def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], 
             console=console,
         ) as progress:
             task = progress.add_task("Fetching court data...", total=None)
-            
-            scraper = DoralCourtsScraper()
-            courts = scraper.fetch_courts(date=date, sport_filter=sport)
-            
+
+            scraper = Scraper()
+
+            # Check if we should save data
+            save_data = ctx.obj.get('save_data', False)
+            if save_data:
+                courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+            else:
+                courts = scraper.fetch_courts(date=date, sport_filter=sport)
+                html_content = ""
+
             if courts:
                 logger.info(f"Successfully fetched {len(courts)} courts from website")
                 inserted_count = db.insert_courts(courts)
                 logger.debug(f"Inserted/updated {inserted_count} courts in database")
                 progress.update(task, description=f"Fetched {len(courts)} courts")
+
+                # Save data if requested
+                if save_data:
+                    try:
+                        html_path = save_html_data(html_content, "_list")
+                        json_path = save_json_data(courts, "_list")
+                        console.print(f"[green]Data saved to:[/green]")
+                        console.print(f"  HTML: {html_path}")
+                        console.print(f"  JSON: {json_path}")
+                    except Exception as e:
+                        logger.error(f"Error saving data: {e}")
+                        console.print(f"[red]Error saving data: {e}[/red]")
             else:
-                logger.warning("No court data found from website")
-                console.print("[yellow]No court data found. Using cached data if available.[/yellow]")
+                logger.error("No court data could be retrieved from website")
+                console.print("[red]Unable to fetch court data from website.[/red]")
+                console.print("[yellow]The website may be temporarily unavailable or blocking requests.[/yellow]")
     else:
         logger.info("Using existing data from database")
-    
+
     # Get courts from database with filters
     logger.debug("Applying filters and retrieving courts from database")
     courts = db.get_courts(
@@ -73,13 +98,13 @@ def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], 
         availability_status=status.title() if status else None,
         date=date
     )
-    
+
     logger.info(f"Found {len(courts)} courts matching criteria")
-    
+
     if not courts:
         console.print("[red]No courts found matching your criteria.[/red]")
         return
-    
+
     # Display courts in a table
     logger.debug("Displaying courts table")
     display_courts_table(courts)
@@ -89,19 +114,21 @@ def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], 
 def stats(ctx):
     """Show database statistics."""
     logger.info("Generating database statistics")
-    
-    db = DoralCourtsDB()
+
+    db = Database()
     stats = db.get_stats()
-    
+
     logger.debug(f"Database stats: {stats}")
-    
+
     if stats['total_courts'] == 0:
         logger.warning("No data available in database")
-        console.print("[yellow]No data available. Use 'doral-courts list --refresh' to fetch data.[/yellow]")
+        console.print("[yellow]No court data available in database.[/yellow]")
+        console.print("[blue]Try running: doral-courts list --refresh[/blue]")
+        console.print("[dim]Note: The website may be blocking automated requests.[/dim]")
         return
-    
+
     logger.info(f"Displaying statistics for {stats['total_courts']} courts")
-    
+
     # Create stats panel
     stats_text = f"""
 Total Courts: {stats['total_courts']}
@@ -109,16 +136,74 @@ Last Updated: {stats['last_updated'] or 'Never'}
 
 Sport Breakdown:
 """
-    
+
     for sport, count in stats['sport_counts'].items():
         stats_text += f"  {sport}: {count}\n"
-    
+
     stats_text += "\nAvailability Status:\n"
     for status, count in stats['availability_counts'].items():
         stats_text += f"  {status}: {count}\n"
-    
+
     panel = Panel(stats_text.strip(), title="Doral Courts Statistics", border_style="blue")
     console.print(panel)
+
+@cli.command()
+@click.option('--court', help='Show detailed time slots for a specific court')
+@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--available-only', is_flag=True, help='Show only available time slots')
+@click.pass_context
+def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
+    """Show detailed time slot availability for courts."""
+    logger.info("Starting detailed time slots display")
+    logger.debug(f"Filters - Court: {court}, Date: {date}, Available only: {available_only}")
+
+    db = Database()
+    courts = db.get_courts(date=date)
+
+    if court:
+        courts = [c for c in courts if court.lower() in c.name.lower()]
+        if not courts:
+            console.print(f"[red]No courts found matching '{court}'[/red]")
+            return
+
+    if not courts:
+        console.print("[red]No courts found matching your criteria.[/red]")
+        return
+
+    for court_obj in courts:
+        if not court_obj.time_slots:
+            console.print(f"\n[yellow]{court_obj.name} - No time slots available[/yellow]")
+            continue
+
+        # Filter slots if needed
+        slots_to_show = court_obj.time_slots
+        if available_only:
+            slots_to_show = [slot for slot in court_obj.time_slots if slot.status == "Available"]
+
+        if not slots_to_show and available_only:
+            console.print(f"\n[yellow]{court_obj.name} - No available time slots[/yellow]")
+            continue
+
+        # Create table for this court's time slots
+        table = Table(title=f"{court_obj.name} - {court_obj.date}")
+        table.add_column("Start Time", style="cyan")
+        table.add_column("End Time", style="cyan")
+        table.add_column("Status", style="bold")
+
+        for slot in slots_to_show:
+            # Color code the status
+            if slot.status == "Available":
+                status_style = "[green]"
+            else:
+                status_style = "[red]"
+
+            table.add_row(
+                slot.start_time,
+                slot.end_time,
+                f"{status_style}{slot.status}[/]"
+            )
+
+        console.print(table)
 
 @cli.command()
 @click.option('--days', default=7, help='Remove data older than N days')
@@ -126,124 +211,111 @@ Sport Breakdown:
 def cleanup(ctx, days: int):
     """Clean up old court data."""
     logger.info(f"Starting cleanup of data older than {days} days")
-    
-    db = DoralCourtsDB()
-    
+
+    db = Database()
+
     # Get count before cleanup for logging
     stats_before = db.get_stats()
     total_before = stats_before['total_courts']
     logger.debug(f"Total courts before cleanup: {total_before}")
-    
+
     db.clear_old_data(days)
-    
+
     # Get count after cleanup
     stats_after = db.get_stats()
     total_after = stats_after['total_courts']
     removed_count = total_before - total_after
-    
+
     logger.info(f"Cleanup completed. Removed {removed_count} old records")
     logger.debug(f"Courts remaining: {total_after}")
-    
+
     console.print(f"[green]Cleaned up data older than {days} days. Removed {removed_count} records.[/green]")
 
 @cli.command()
 @click.option('--interval', default=300, help='Update interval in seconds (default: 5 minutes)')
-@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False), 
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
 @click.option('--date', help='Date to monitor (MM/DD/YYYY format)')
 @click.pass_context
 def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
     """Monitor court availability with real-time updates."""
     import time
-    
+
     logger.info(f"Starting watch mode with {interval}s interval")
     logger.debug(f"Watch filters - Sport: {sport}, Date: {date}")
-    
+
     console.print(f"[blue]Monitoring court availability every {interval} seconds. Press Ctrl+C to stop.[/blue]")
-    
+
     update_count = 0
     try:
         while True:
             update_count += 1
             logger.debug(f"Watch update #{update_count}")
-            
+
             console.clear()
             console.print(f"[bold]Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/bold]\n")
-            
-            db = DoralCourtsDB()
-            scraper = DoralCourtsScraper()
-            
+
+            db = Database()
+            scraper = Scraper()
+
             with Progress(
                 SpinnerColumn(),
                 TextColumn("[progress.description]{task.description}"),
                 console=console,
             ) as progress:
                 task = progress.add_task("Fetching latest data...", total=None)
-                
+
                 logger.debug("Fetching fresh court data for watch update")
-                courts = scraper.fetch_courts(date=date, sport_filter=sport)
-                
+
+                # Check if we should save data
+                save_data = ctx.obj.get('save_data', False)
+                if save_data:
+                    courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+                else:
+                    courts = scraper.fetch_courts(date=date, sport_filter=sport)
+                    html_content = ""
+
                 if courts:
                     logger.debug(f"Fetched {len(courts)} courts for watch update")
                     inserted_count = db.insert_courts(courts)
                     logger.debug(f"Updated {inserted_count} courts in database")
                     progress.update(task, description=f"Updated {len(courts)} courts")
+
+                    # Save data if requested
+                    if save_data:
+                        try:
+                            timestamp = datetime.now().strftime("%H%M%S")
+                            html_path = save_html_data(html_content, f"_watch_{timestamp}")
+                            json_path = save_json_data(courts, f"_watch_{timestamp}")
+                            logger.info(f"Watch data saved - HTML: {html_path}, JSON: {json_path}")
+                        except Exception as e:
+                            logger.error(f"Error saving watch data: {e}")
                 else:
-                    logger.warning("No courts found during watch update")
-            
+                    logger.error("No courts could be retrieved during watch update")
+                    progress.update(task, description="Failed to fetch court data")
+
             # Display current data
             courts = db.get_courts(
                 sport_type=sport.title() if sport else None,
                 date=date
             )
-            
+
             logger.debug(f"Displaying {len(courts)} courts in watch mode")
-            
+
             if courts:
                 display_courts_table(courts)
             else:
-                console.print("[yellow]No courts found.[/yellow]")
-            
+                console.print("[yellow]No court data available.[/yellow]")
+                console.print("[dim]The website may be blocking requests. Try stopping and restarting.[/dim]")
+
             console.print(f"\n[dim]Next update in {interval} seconds...[/dim]")
             logger.debug(f"Waiting {interval} seconds before next update")
             time.sleep(interval)
-            
+
     except KeyboardInterrupt:
         logger.info("Watch mode stopped by user")
         console.print("\n[yellow]Monitoring stopped.[/yellow]")
 
-def display_courts_table(courts: List[Court]):
-    """Display courts in a formatted table."""
-    table = Table(title="Doral Courts Availability")
-    
-    table.add_column("Court Name", style="cyan", no_wrap=True)
-    table.add_column("Sport", style="magenta")
-    table.add_column("Date", style="green")
-    table.add_column("Time", style="yellow")
-    table.add_column("Status", style="bold")
-    table.add_column("Surface", style="blue")
-    table.add_column("Price", style="green")
-    
-    for court in courts:
-        # Color code the status
-        if "available" in court.availability_status.lower():
-            status_style = "[green]"
-        elif "booked" in court.availability_status.lower():
-            status_style = "[red]"
-        else:
-            status_style = "[yellow]"
-        
-        table.add_row(
-            court.name,
-            court.sport_type,
-            court.date,
-            court.time_slot,
-            f"{status_style}{court.availability_status}[/]",
-            court.surface_type,
-            court.price or "N/A"
-        )
-    
-    console.print(table)
 
 if __name__ == "__main__":
     cli()
