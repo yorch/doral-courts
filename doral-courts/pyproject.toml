@@ -5,10 +5,11 @@ description = "CLI app for showing Doral Tennis and Pickleball Courts availabili
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "requests>=2.31.0",
-    "beautifulsoup4>=4.12.0",
-    "click>=8.1.0",
-    "rich>=13.0.0",
+    "requests>=2.32.0",
+    "beautifulsoup4>=4.13.0",
+    "click>=8.2.0",
+    "rich>=14.0.0",
+    "cloudscraper>=1.2.0",
 ]
 
 [project.scripts]
