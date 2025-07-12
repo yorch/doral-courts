@@ -242,16 +242,10 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
             <tr>
                 <td class="cart-blocks" colspan="8">
-                    <a class="button full-block primary cart-button cart-button--state-block"
-                       href="#" data-tooltip="Available">
-                        <span>8:00 am - 9:00 am</span>
-                        <span>Available</span>
-                    </a>
-                    <a class="button full-block secondary cart-button cart-button--state-block"
-                       href="#" data-tooltip="Available">
-                        <span>10:00 am - 11:00 am</span>
-                        <span>Book Now</span>
-                    </a>
+                    <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                       href="#" data-tooltip="Book Now">8:00 am - 9:00 am</a>
+                    <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                       href="#" data-tooltip="Book Now">10:00 am - 11:00 am</a>
                 </td>
             </tr>
         </tbody>
@@ -282,18 +276,15 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
             <tr>
                 <td class="cart-blocks" colspan="8">
-                    <a class="button full-block primary cart-button" href="#">
-                        <span>8:00 am - 9:00 am</span>
-                        <span>Available</span>
-                    </a>
-                    <a class="button full-block error cart-button" href="#">
+                    <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                       href="#" data-tooltip="Book Now">8:00 am - 9:00 am</a>
+                    <a class="button full-block error cart-button cart-button--state-block cart-button--display-multiline"
+                       href="#" data-tooltip="Unavailable">
                         <span>9:00 am - 10:00 am</span>
                         <span>Unavailable</span>
                     </a>
-                    <a class="button full-block primary cart-button" href="#">
-                        <span>10:00 am - 11:00 am</span>
-                        <span>Available</span>
-                    </a>
+                    <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                       href="#" data-tooltip="Book Now">10:00 am - 11:00 am</a>
                 </td>
             </tr>
         </tbody>
@@ -324,10 +315,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
                     </tr>
                     <tr>
                         <td class="cart-blocks" colspan="8">
-                            <a class="button full-block primary cart-button" href="#">
-                                <span>8:00 am - 9:00 am</span>
-                                <span>Available</span>
-                            </a>
+                            <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                               href="#" data-tooltip="Book Now">8:00 am - 9:00 am</a>
                         </td>
                     </tr>
                 </tbody>
@@ -491,10 +480,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
             <tr>
                 <td class="cart-blocks" colspan="8">
-                    <a class="button full-block primary cart-button" href="#">
-                        <span>Invalid time format</span>
-                        <span>Available</span>
-                    </a>
+                    <a class="button multi-select full-block success instant-overlay cart-button cart-button--state-block"
+                       href="#" data-tooltip="Book Now">Invalid time format</a>
                 </td>
             </tr>
         </tbody>
@@ -519,8 +506,9 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
             <tr>
                 <td class="cart-blocks" colspan="8">
-                    <a class="button full-block primary cart-button" href="#">
-                        <span>Only one span</span>
+                    <a class="button full-block error cart-button cart-button--state-block cart-button--display-multiline"
+                       href="#" data-tooltip="Unavailable">
+                        <!-- Missing span with time -->
                     </a>
                 </td>
             </tr>

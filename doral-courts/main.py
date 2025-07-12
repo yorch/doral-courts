@@ -3,6 +3,7 @@ import os
 from rich.console import Console
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 from datetime import datetime
 from scraper import Scraper
 from html_extractor import Court, TimeSlot

@@ -54,7 +54,7 @@ class CourtAvailabilityHTMLExtractor:
         # Process each table separately
         for table_index, court_table in enumerate(court_tables):
             logger.debug("Processing table %d/%d", table_index + 1, len(court_tables))
-            
+
             # Find all rows in the tbody
             tbody = court_table.find('tbody')
             if not tbody:
@@ -170,29 +170,40 @@ class CourtAvailabilityHTMLExtractor:
 
         for button in cart_buttons:
             try:
-                # Extract time range from the first span
-                time_spans = button.find_all('span')
-                if len(time_spans) < 2:
-                    continue
+                button_classes = button.get('class', [])
+                button_tooltip = button.get('data-tooltip', '')
 
-                time_range_text = time_spans[0].get_text(strip=True)
-                status_text = time_spans[1].get_text(strip=True)
+                # Check if this is an available slot
+                # Available slots have 'success' class and 'Book Now' tooltip
+                is_available = ('success' in button_classes and
+                               'Book Now' in button_tooltip)
 
-                # Parse time range (e.g., "8:00 am - 9:00 am")
+                # Extract time range text
+                if is_available:
+                    # Available slots have time directly in button text
+                    time_range_text = button.get_text(strip=True)
+                else:
+                    # Unavailable slots have time in first span
+                    time_spans = button.find_all('span')
+                    if len(time_spans) < 1:
+                        continue
+                    time_range_text = time_spans[0].get_text(strip=True)
+
+                # Parse time range (e.g., "8:00 am - 9:00 am" or " 2:00 pm -  3:00 pm")
                 if ' - ' in time_range_text:
                     start_time, end_time = time_range_text.split(' - ', 1)
                     start_time = start_time.strip()
                     end_time = end_time.strip()
                 else:
                     # Fallback if format is different
-                    start_time = time_range_text
+                    start_time = time_range_text.strip()
                     end_time = ""
 
-                # Determine status from button classes and text
-                if 'error' in button.get('class', []) or status_text.lower() == 'unavailable':
-                    status = "Unavailable"
-                else:
+                # Determine status based on button characteristics
+                if is_available:
                     status = "Available"
+                else:
+                    status = "Unavailable"
 
                 time_slot = TimeSlot(
                     start_time=start_time,
