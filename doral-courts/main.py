@@ -9,7 +9,7 @@ from scraper import Scraper
 from html_extractor import Court, TimeSlot
 from database import Database
 from logger import setup_logging, get_logger
-from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary, display_available_slots_table
+from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary, display_available_slots_table, parse_date_input
 from typing import List, Optional
 
 console = Console()
@@ -33,14 +33,21 @@ def cli(ctx, verbose, save_data):
               help='Filter by sport type')
 @click.option('--status', type=click.Choice(['available', 'booked', 'maintenance'], case_sensitive=False),
               help='Filter by availability status')
-@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.pass_context
 def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str]):
     """List available courts with optional filters. Always fetches fresh data from website."""
     verbose = ctx.obj.get('verbose', False)
 
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info("Starting court listing command - fetching fresh data")
-    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}")
+    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date} -> {parsed_date}")
 
     db = Database()
 
@@ -149,13 +156,20 @@ Sport Breakdown:
 
 @cli.command()
 @click.option('--court', help='Show detailed time slots for a specific court')
-@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.option('--available-only', is_flag=True, help='Show only available time slots')
 @click.pass_context
 def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
     """Show detailed time slot availability for courts. Always fetches fresh data."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info("Starting detailed time slots display - fetching fresh data")
-    logger.debug(f"Filters - Court: {court}, Date: {date}, Available only: {available_only}")
+    logger.debug(f"Filters - Court: {court}, Date: {date} -> {parsed_date}, Available only: {available_only}")
 
     db = Database()
 
@@ -173,9 +187,9 @@ def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
         # Check if we should save data
         save_data = ctx.obj.get('save_data', False)
         if save_data:
-            courts, html_content = scraper.fetch_courts_with_html(date=date)
+            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date)
         else:
-            courts = scraper.fetch_courts(date=date)
+            courts = scraper.fetch_courts(date=parsed_date)
             html_content = ""
 
         if courts:
@@ -252,12 +266,19 @@ def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
               default='detailed', help='Display mode: detailed (full court info) or summary (time slots analysis)')
 @click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
-@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.pass_context
 def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
     """Display comprehensive view of all scraped data from the website. Always fetches fresh data."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info("Starting comprehensive data display - fetching fresh data")
-    logger.debug(f"Mode: {mode}, Sport: {sport}, Date: {date}")
+    logger.debug(f"Mode: {mode}, Sport: {sport}, Date: {date} -> {parsed_date}")
 
     db = Database()
 
@@ -275,9 +296,9 @@ def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
         # Check if we should save data
         save_data = ctx.obj.get('save_data', False)
         if save_data:
-            courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date, sport_filter=sport)
         else:
-            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
             html_content = ""
 
         # Get the actual URL used for the request
@@ -357,14 +378,21 @@ def cleanup(ctx, days: int):
               help='Filter by sport type')
 @click.option('--status', type=click.Choice(['available', 'booked', 'maintenance'], case_sensitive=False),
               help='Filter by availability status')
-@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.option('--mode', type=click.Choice(['table', 'detailed', 'summary'], case_sensitive=False),
               default='table', help='Display mode: table (simple), detailed (full info), or summary (analysis)')
 @click.pass_context
 def history(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], mode: str):
     """View historical court data from database (cached data)."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info("Starting historical data display from database")
-    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date}, Mode: {mode}")
+    logger.debug(f"Filters - Sport: {sport}, Status: {status}, Date: {date} -> {parsed_date}, Mode: {mode}")
 
     db = Database()
 
@@ -373,7 +401,7 @@ def history(ctx, sport: Optional[str], status: Optional[str], date: Optional[str
     courts = db.get_courts(
         sport_type=sport.title() if sport else None,
         availability_status=status.title() if status else None,
-        date=date
+        date=parsed_date
     )
 
     logger.info(f"Found {len(courts)} historical records matching criteria")
@@ -400,14 +428,21 @@ def history(ctx, sport: Optional[str], status: Optional[str], date: Optional[str
 @click.option('--interval', default=300, help='Update interval in seconds (default: 5 minutes)')
 @click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
-@click.option('--date', help='Date to monitor (MM/DD/YYYY format)')
+@click.option('--date', help='Date to monitor (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.pass_context
 def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
     """Monitor court availability with real-time updates."""
     import time
 
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info(f"Starting watch mode with {interval}s interval")
-    logger.debug(f"Watch filters - Sport: {sport}, Date: {date}")
+    logger.debug(f"Watch filters - Sport: {sport}, Date: {date} -> {parsed_date}")
 
     console.print(f"[blue]Monitoring court availability every {interval} seconds. Press Ctrl+C to stop.[/blue]")
 
@@ -435,9 +470,9 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
                 # Check if we should save data
                 save_data = ctx.obj.get('save_data', False)
                 if save_data:
-                    courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+                    courts, html_content = scraper.fetch_courts_with_html(date=parsed_date, sport_filter=sport)
                 else:
-                    courts = scraper.fetch_courts(date=date, sport_filter=sport)
+                    courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
                     html_content = ""
 
                 if courts:
@@ -462,7 +497,7 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
             # Display current data
             courts = db.get_courts(
                 sport_type=sport.title() if sport else None,
-                date=date
+                date=parsed_date
             )
 
             logger.debug(f"Displaying {len(courts)} courts in watch mode")
@@ -482,15 +517,22 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
         console.print("\n[yellow]Monitoring stopped.[/yellow]")
 
 @cli.command(name='list-available-slots')
-@click.option('--date', required=True, help='Date to check (MM/DD/YYYY format)')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
               help='Filter by sport type')
 @click.option('--location', help='Filter by location (e.g., "Doral Central Park")')
 @click.pass_context
-def list_available_slots(ctx, date: str, sport: Optional[str], location: Optional[str]):
+def list_available_slots(ctx, date: Optional[str], sport: Optional[str], location: Optional[str]):
     """List all available time slots by court for a specific date."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
     logger.info("Starting available slots listing - fetching fresh data")
-    logger.debug(f"Date: {date}, Sport: {sport}, Location: {location}")
+    logger.debug(f"Date: {date} -> {parsed_date}, Sport: {sport}, Location: {location}")
 
     db = Database()
 
@@ -508,9 +550,9 @@ def list_available_slots(ctx, date: str, sport: Optional[str], location: Optiona
         # Check if we should save data
         save_data = ctx.obj.get('save_data', False)
         if save_data:
-            courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date, sport_filter=sport)
         else:
-            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
             html_content = ""
 
         if courts:
@@ -555,7 +597,7 @@ def list_available_slots(ctx, date: str, sport: Optional[str], location: Optiona
         return
 
     # Display available slots table
-    display_available_slots_table(filtered_courts, date, scraper.get_last_request_url())
+    display_available_slots_table(filtered_courts, parsed_date, scraper.get_last_request_url())
 
 
 if __name__ == "__main__":
