@@ -1,56 +1,98 @@
 import requests
+import cloudscraper
 from bs4 import BeautifulSoup
-from dataclasses import dataclass
 from typing import List, Optional
 from datetime import datetime, time
 from logger import get_logger
+from html_extractor import CourtAvailabilityHTMLExtractor, Court
 
 logger = get_logger(__name__)
 
-@dataclass
-class Court:
-    name: str
-    sport_type: str
-    location: str
-    surface_type: str
-    availability_status: str
-    date: str
-    time_slot: str
-    price: Optional[str] = None
-
-class DoralCourtsScraper:
+class Scraper:
     def __init__(self):
         self.base_url = "https://fldoralweb.myvscloud.com/webtrac/web/search.html"
-        self.session = requests.Session()
+        self.home_url = "https://fldoralweb.myvscloud.com/webtrac/web/splash.html"
+        self.html_extractor = CourtAvailabilityHTMLExtractor()
+
+        # Create cloudscraper session to bypass Cloudflare protection
+        self.session = cloudscraper.create_scraper(
+            browser={
+                'browser': 'chrome',
+                'platform': 'darwin',
+                'desktop': True
+            },
+            debug=False  # Disable debug output
+        )
+
+        # Additional headers for better compatibility (let cloudscraper handle encoding)
         self.session.headers.update({
-            'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-            'accept-language': 'en-US,en;q=0.9',
-            'cache-control': 'max-age=0',
-            'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36'
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Cache-Control': 'max-age=0',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
         })
-        logger.debug("Initialized DoralCourtsScraper with base URL: %s", self.base_url)
+
+        logger.debug("Initialized Scraper with cloudscraper and base URL: %s", self.base_url)
+
+    def _initialize_session(self):
+        """Initialize session by visiting the home page to get cookies and tokens."""
+        logger.debug("Initializing cloudscraper session")
+
+        try:
+            # cloudscraper should automatically handle Cloudflare challenges
+            # Just try to access the main page
+            logger.debug("Attempting to access home page with cloudscraper")
+            response = self.session.get(self.home_url, timeout=30)
+            logger.debug("Home page response: %d", response.status_code)
+
+            # Add essential cookies if they weren't set automatically
+            if '_CookiesEnabled' not in self.session.cookies:
+                self.session.cookies.set('_CookiesEnabled', 'Yes')
+            if '_mobile' not in self.session.cookies:
+                self.session.cookies.set('_mobile', 'no')
+
+            logger.debug("Session cookies: %s", list(self.session.cookies.keys()))
+
+            # Consider any non-error status as success since cloudscraper handles challenges
+            if response.status_code < 500:
+                logger.info("Session initialized successfully with cloudscraper")
+                return True
+            else:
+                logger.warning("Server error during session initialization: %d", response.status_code)
+                return False
+
+        except Exception as e:
+            logger.error("Failed to initialize session with cloudscraper: %s", e)
+            return False
 
     def _get_csrf_token(self) -> str:
-        """Extract CSRF token from the initial page load."""
-        logger.debug("Fetching CSRF token from %s", self.base_url)
-        
+        """Extract CSRF token from the search page."""
+        logger.debug("Fetching CSRF token from search page")
+
         try:
-            response = self.session.get(self.base_url)
-            response.raise_for_status()
-            logger.debug("Successfully fetched page for CSRF token (status: %d)", response.status_code)
-            
-            soup = BeautifulSoup(response.content, 'html.parser')
-            csrf_input = soup.find('input', {'name': '_csrf_token'})
-            
-            if csrf_input and csrf_input.get('value'):
-                token = csrf_input['value']
-                logger.debug("Found CSRF token: %s...", token[:20])
-                return token
+            response = self.session.get(self.base_url, timeout=30)
+            logger.debug("CSRF token fetch response: %d", response.status_code)
+
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.content, 'html.parser')
+                csrf_input = soup.find('input', {'name': '_csrf_token'})
+
+                if csrf_input and csrf_input.get('value'):
+                    token = csrf_input['value']
+                    logger.debug("Found CSRF token: %s...", token[:20])
+                    return token
+                else:
+                    logger.warning("CSRF token not found in page")
+                    return ""
             else:
-                logger.warning("CSRF token not found in page")
+                logger.warning("Failed to fetch CSRF token page, status: %d", response.status_code)
                 return ""
-                
-        except requests.RequestException as e:
+
+        except Exception as e:
             logger.error("Failed to fetch CSRF token: %s", e)
             return ""
 
@@ -62,10 +104,10 @@ class DoralCourtsScraper:
             logger.debug("Using current date: %s", date)
         else:
             logger.debug("Using provided date: %s", date)
-            
+
         logger.debug("Building search params for page %d, time %s", page, begin_time)
         csrf_token = self._get_csrf_token()
-        
+
         params = {
             'Action': 'Start',
             'SubAction': '',
@@ -96,122 +138,107 @@ class DoralCourtsScraper:
             'multiselectlist_value': '',
             'frwebsearch_buttonsearch': 'yes'
         }
-        
+
         logger.debug("Built search params with %d parameters", len(params))
         return params
 
-    def _parse_court_data(self, soup: BeautifulSoup) -> List[Court]:
-        """Parse court data from the HTML response."""
-        logger.debug("Starting court data parsing")
-        courts = []
-        
-        # Find all court entries in the search results
-        court_entries = soup.find_all('div', class_='search-result-item') or soup.find_all('tr', class_='search-result')
-        logger.debug("Found %d potential court entries in HTML", len(court_entries))
-        
-        for i, entry in enumerate(court_entries):
-            logger.debug("Processing court entry %d/%d", i + 1, len(court_entries))
-            try:
-                # Extract court information from the HTML structure
-                name_elem = entry.find('td', class_='facility-name') or entry.find('div', class_='facility-name')
-                name = name_elem.get_text(strip=True) if name_elem else "Unknown Court"
-                
-                # Determine sport type from the name or other indicators
-                sport_type = "Tennis" if "tennis" in name.lower() else "Pickleball"
-                
-                # Extract location information
-                location_elem = entry.find('td', class_='location') or entry.find('div', class_='location')
-                location = location_elem.get_text(strip=True) if location_elem else "Doral"
-                
-                # Extract surface type if available
-                surface_elem = entry.find('td', class_='surface') or entry.find('div', class_='surface')
-                surface_type = surface_elem.get_text(strip=True) if surface_elem else "Hard Court"
-                
-                # Extract availability status
-                status_elem = entry.find('td', class_='availability') or entry.find('div', class_='availability')
-                availability_status = status_elem.get_text(strip=True) if status_elem else "Available"
-                
-                # Extract date and time information
-                date_elem = entry.find('td', class_='date') or entry.find('div', class_='date')
-                date = date_elem.get_text(strip=True) if date_elem else datetime.now().strftime("%m/%d/%Y")
-                
-                time_elem = entry.find('td', class_='time') or entry.find('div', class_='time')
-                time_slot = time_elem.get_text(strip=True) if time_elem else "Unknown"
-                
-                # Extract price if available
-                price_elem = entry.find('td', class_='price') or entry.find('div', class_='price')
-                price = price_elem.get_text(strip=True) if price_elem else None
-                
-                court = Court(
-                    name=name,
-                    sport_type=sport_type,
-                    location=location,
-                    surface_type=surface_type,
-                    availability_status=availability_status,
-                    date=date,
-                    time_slot=time_slot,
-                    price=price
-                )
-                
-                courts.append(court)
-                logger.debug("Successfully parsed court: %s (%s)", name, sport_type)
-                
-            except Exception as e:
-                logger.warning("Error parsing court entry %d: %s", i + 1, e)
-                continue
-        
-        logger.info("Parsed %d courts from HTML", len(courts))
-        return courts
-
     def fetch_courts(self, date: str = None, sport_filter: str = None) -> List[Court]:
         """Fetch court availability data from the website."""
-        logger.info("Starting court data fetch")
+        courts, _ = self.fetch_courts_with_html(date, sport_filter)
+        return courts
+
+    def fetch_courts_with_html(self, date: str = None, sport_filter: str = None) -> tuple[List[Court], str]:
+        """Fetch court availability data from the website and return both courts and HTML."""
+        logger.info("Starting court data fetch from website")
         logger.debug("Fetch parameters - Date: %s, Sport filter: %s", date, sport_filter)
-        
+
+        # Initialize session first
+        if not self._initialize_session():
+            logger.error("Failed to initialize session with website")
+            return [], ""
+
         all_courts = []
+        all_html_content = []
         page = 1
-        
-        while True:
-            logger.debug("Fetching page %d", page)
-            params = self._build_search_params(date=date, page=page)
-            
-            try:
+
+        try:
+            while True:
+                logger.debug("Fetching page %d", page)
+                params = self._build_search_params(date=date, page=page)
+
+                # Update headers for this specific request
+                headers = {
+                    'Referer': self.base_url,
+                    'Sec-Fetch-Site': 'same-origin',
+                    'Sec-Fetch-Mode': 'navigate',
+                    'Sec-Fetch-Dest': 'document',
+                }
+
                 logger.debug("Making request to %s", self.base_url)
-                response = self.session.get(self.base_url, params=params)
-                response.raise_for_status()
-                logger.debug("Received response (status: %d, size: %d bytes)", 
-                           response.status_code, len(response.content))
-                
-                soup = BeautifulSoup(response.content, 'html.parser')
-                courts = self._parse_court_data(soup)
-                
-                if not courts:
-                    logger.debug("No courts found on page %d, stopping pagination", page)
+                response = self.session.get(self.base_url, params=params, headers=headers)
+
+                if response.status_code == 200:
+                    logger.debug("Successfully received response (status: %d, size: %d bytes)",
+                               response.status_code, len(response.content))
+
+                    # Store HTML content for potential saving
+                    html_content = response.text
+                    all_html_content.append(html_content)
+
+                    # Debug: save HTML to see what we're getting
+                    if logger.isEnabledFor(10):  # DEBUG level
+                        try:
+                            with open(f"debug_page_{page}.html", "w", encoding="utf-8", errors="replace") as f:
+                                f.write(html_content)
+                            logger.debug("Saved HTML content to debug_page_%d.html", page)
+                        except Exception as e:
+                            logger.debug("Could not save HTML debug file: %s", e)
+
+                    # Use response.text instead of response.content for better encoding handling
+                    soup = BeautifulSoup(html_content, 'html.parser')
+                    courts = self.html_extractor.parse_court_data(soup)
+
+                    if not courts:
+                        logger.debug("No courts found on page %d, stopping pagination", page)
+                        break
+
+                    logger.debug("Found %d courts on page %d", len(courts), page)
+                    all_courts.extend(courts)
+
+                    # Check if there's a next page
+                    next_page = soup.find('a', text='Next') or soup.find('a', class_='next-page')
+                    if not next_page:
+                        logger.debug("No next page link found, stopping pagination")
+                        break
+
+                    page += 1
+
+                elif response.status_code == 403:
+                    logger.error("Received 403 Forbidden - website is blocking automated requests")
+                    logger.error("The website has anti-bot protection that prevents access")
                     break
-                    
-                logger.debug("Found %d courts on page %d", len(courts), page)
-                all_courts.extend(courts)
-                
-                # Check if there's a next page
-                next_page = soup.find('a', text='Next') or soup.find('a', class_='next-page')
-                if not next_page:
-                    logger.debug("No next page link found, stopping pagination")
+                else:
+                    logger.error("Website returned status %d", response.status_code)
                     break
-                    
-                page += 1
-                
-            except requests.RequestException as e:
-                logger.error("Error fetching page %d: %s", page, e)
-                break
-        
-        logger.info("Fetched %d total courts from %d pages", len(all_courts), page)
-        
-        # Apply sport filter if specified
-        if sport_filter:
-            original_count = len(all_courts)
-            all_courts = [court for court in all_courts if court.sport_type.lower() == sport_filter.lower()]
-            logger.debug("Applied sport filter '%s': %d -> %d courts", 
-                        sport_filter, original_count, len(all_courts))
-            
-        logger.info("Returning %d courts after filtering", len(all_courts))
-        return all_courts
+
+        except requests.RequestException as e:
+            logger.error("Network error while fetching from website: %s", e)
+
+        # Combine all HTML content
+        combined_html = "\n\n<!-- PAGE BREAK -->\n\n".join(all_html_content)
+
+        if all_courts:
+            logger.info("Successfully fetched %d total courts from %d pages", len(all_courts), page)
+
+            # Apply sport filter if specified
+            if sport_filter:
+                original_count = len(all_courts)
+                all_courts = [court for court in all_courts if court.sport_type.lower() == sport_filter.lower()]
+                logger.debug("Applied sport filter '%s': %d -> %d courts",
+                            sport_filter, original_count, len(all_courts))
+
+            logger.info("Returning %d courts from website", len(all_courts))
+        else:
+            logger.warning("No court data could be retrieved from website")
+
+        return all_courts, combined_html
