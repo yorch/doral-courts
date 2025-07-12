@@ -30,7 +30,27 @@ logger = get_logger(__name__)
 @click.option('--save-data', is_flag=True, help='Save retrieved HTML and JSON data to files')
 @click.pass_context
 def cli(ctx, verbose, save_data):
-    """Doral Courts CLI - Display tennis and pickleball court availability."""
+    """
+    Doral Courts CLI - Display tennis and pickleball court availability.
+
+    Main entry point for the command-line interface. Sets up global configuration
+    including logging verbosity and data saving preferences.
+
+    Args:
+        ctx: Click context object for sharing data between commands
+        verbose: Enable detailed logging output
+        save_data: Save HTML and JSON data to files for analysis
+
+    Global Options:
+        --verbose, -v: Enable verbose logging for debugging
+        --save-data: Export scraped data to data/ directory
+        --version: Show version and exit
+        --help: Show help message
+
+    Examples:
+        doral-courts --verbose list
+        doral-courts --save-data list-available-slots --date tomorrow
+    """
     ctx.ensure_object(dict)
     ctx.obj['verbose'] = verbose
     ctx.obj['save_data'] = save_data
@@ -44,7 +64,43 @@ def cli(ctx, verbose, save_data):
 @click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
 @click.pass_context
 def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str]):
-    """List available courts with optional filters. Always fetches fresh data from website."""
+    """
+    List available courts with optional filters. Always fetches fresh data from website.
+
+    Retrieves current court availability data from the Doral reservation system
+    and displays it in a formatted table. Supports filtering by sport type,
+    availability status, and date.
+
+    Args:
+        ctx: Click context with global options
+        sport: Filter results to show only tennis or pickleball courts
+        status: Filter by availability status (available, booked, maintenance)
+        date: Date to check in various formats (default: today)
+
+    Date Formats:
+        - Relative: today, tomorrow, yesterday
+        - Offset: +N, -N (days from today)
+        - Absolute: MM/DD/YYYY, YYYY-MM-DD
+
+    Output:
+        Displays a Rich table with columns:
+        - Court Name: Name of the court
+        - Sport: Tennis or Pickleball
+        - Date: Date being checked
+        - Time Slots: Available/total slots
+        - Status: Overall availability
+        - Capacity: Maximum players
+        - Price: Cost information
+
+    Examples:
+        doral-courts list
+        doral-courts list --sport tennis --date tomorrow
+        doral-courts list --status available --date +7
+
+    Note:
+        Always fetches fresh data from the website. For historical data,
+        use the 'history' command instead.
+    """
     verbose = ctx.obj.get('verbose', False)
 
     # Parse date input
@@ -127,7 +183,30 @@ def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str]):
 @cli.command()
 @click.pass_context
 def stats(ctx):
-    """Show database statistics."""
+    """
+    Show database statistics.
+
+    Displays comprehensive statistics about the local SQLite database including
+    total courts, last update time, and breakdown by sport and availability status.
+    Uses only cached data from the database.
+
+    Args:
+        ctx: Click context (unused but required by Click)
+
+    Output:
+        Rich panel displaying:
+        - Total Courts: Number of court records in database
+        - Last Updated: Most recent data fetch timestamp
+        - Sport Breakdown: Count of tennis vs pickleball courts
+        - Availability Status: Count by availability status
+
+    Examples:
+        doral-courts stats
+
+    Note:
+        Shows historical database content only. Does not fetch fresh data.
+        If database is empty, suggests running 'list' command first.
+    """
     logger.info("Generating database statistics")
 
     db = Database()

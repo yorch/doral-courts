@@ -7,13 +7,65 @@ from logger import get_logger
 logger = get_logger(__name__)
 
 class Database:
+    """
+    SQLite database interface for storing and retrieving court availability data.
+
+    Provides methods for storing court information, time slots, and querying
+    historical data. Handles database schema creation, migrations, and data
+    cleanup operations.
+
+    Database Schema:
+        courts: Main court information with availability status
+        time_slots: Individual time slot details linked to courts
+
+    Features:
+        - Automatic schema migration support
+        - Duplicate prevention with unique constraints
+        - Historical data tracking with timestamps
+        - Efficient querying with proper indexing
+
+    Usage:
+        db = Database()
+        db.insert_courts(courts_list)
+        historical_courts = db.get_courts(sport_type="Tennis")
+    """
+
     def __init__(self, db_path: str = "doral_courts.db"):
+        """
+        Initialize database connection and setup schema.
+
+        Args:
+            db_path: Path to SQLite database file (default: "doral_courts.db")
+
+        Creates database file if it doesn't exist and sets up required tables
+        and indexes. Performs any necessary schema migrations.
+        """
         self.db_path = db_path
         logger.debug("Initializing database at path: %s", db_path)
         self.init_database()
 
     def init_database(self):
-        """Initialize the database with required tables."""
+        """
+        Initialize the database with required tables and indexes.
+
+        Creates the court and time_slots tables with proper schema and
+        constraints. Handles schema migrations (e.g., surface_type -> capacity
+        column rename). Sets up indexes for efficient querying.
+
+        Tables Created:
+            courts: Main court data with unique constraint on (name, date, time_slot)
+            time_slots: Individual time slots with foreign key to courts
+
+        Indexes Created:
+            - idx_sport_type: For filtering by sport
+            - idx_availability: For filtering by availability status
+            - idx_date: For date-based queries
+            - idx_time_slots_*: For time slot queries
+
+        Migration Support:
+            - Renames legacy surface_type column to capacity
+            - Maintains backward compatibility
+        """
         logger.debug("Setting up database schema")
 
         with sqlite3.connect(self.db_path) as conn:
@@ -94,7 +146,35 @@ class Database:
         logger.info("Database initialized successfully")
 
     def insert_courts(self, courts: List[Court]) -> int:
-        """Insert or update court data in the database."""
+        """
+        Insert or update court data in the database.
+
+        Stores court information and associated time slots. Uses INSERT OR REPLACE
+        to handle duplicate entries based on unique constraint (name, date, time_slot).
+        Each court's time slots are stored in the separate time_slots table.
+
+        Args:
+            courts: List of Court objects to insert/update
+
+        Returns:
+            Number of courts successfully inserted or updated
+
+        Database Operations:
+            1. Insert/update main court record in courts table
+            2. Clear existing time slots for the court and date
+            3. Insert new time slots in time_slots table
+            4. All operations are transactional (commit at end)
+
+        Error Handling:
+            - Logs errors for individual courts but continues processing
+            - Uses database transactions for consistency
+            - Returns count of successful insertions
+
+        Example:
+            db = Database()
+            count = db.insert_courts(scraped_courts)
+            print(f"Inserted {count} courts")
+        """
         logger.info("Inserting %d courts into database", len(courts))
         inserted_count = 0
 

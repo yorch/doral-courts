@@ -141,7 +141,34 @@ def save_json_data(courts: List[Court], filename_suffix: str = "", source_url: s
     return str(filepath)
 
 def display_courts_table(courts: List[Court]):
-    """Display courts in a formatted table."""
+    """
+    Display courts in a formatted Rich table.
+
+    Creates and displays a comprehensive table showing court information
+    including availability, time slots, and other details. Uses Rich library
+    for colored output and proper formatting.
+
+    Args:
+        courts: List of Court objects to display
+
+    Table Columns:
+        - Court Name: Name of the court (cyan, no-wrap)
+        - Sport: Tennis or Pickleball (magenta)
+        - Date: Date being displayed (green)
+        - Time Slots: Available/total count (yellow)
+        - Status: Availability status with color coding (bold)
+        - Capacity: Maximum players (blue)
+        - Price: Cost information (green)
+
+    Color Coding:
+        - Green status: Courts with available slots
+        - Red status: Fully booked courts
+        - Yellow status: Other statuses (maintenance, etc.)
+
+    Example:
+        courts = scraper.fetch_courts()
+        display_courts_table(courts)
+    """
     table = Table(title="Doral Courts Availability")
 
     table.add_column("Court Name", style="cyan", no_wrap=True)

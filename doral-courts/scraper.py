@@ -9,7 +9,46 @@ from html_extractor import CourtAvailabilityHTMLExtractor, Court
 logger = get_logger(__name__)
 
 class Scraper:
+    """
+    Web scraper for the Doral courts reservation system.
+
+    Handles fetching court availability data from the Doral reservation website,
+    including bypassing Cloudflare protection and parsing the returned HTML.
+    Uses cloudscraper to handle anti-bot protection and maintains session state.
+
+    Features:
+        - Cloudflare bypass using cloudscraper
+        - Session management with proper headers
+        - Date and sport filtering
+        - HTML extraction with error handling
+        - URL tracking for debugging
+
+    Attributes:
+        base_url: Main search endpoint for court data
+        home_url: Homepage for session initialization
+        session: cloudscraper session for making requests
+        html_extractor: HTML parser for court data
+        last_request_urls: Recent request URLs for debugging
+
+    Usage:
+        scraper = Scraper()
+        courts = scraper.fetch_courts(date="07/12/2025", sport_filter="tennis")
+    """
+
     def __init__(self):
+        """
+        Initialize scraper with cloudscraper session and configuration.
+
+        Sets up the web scraper with Cloudflare bypass capabilities using
+        cloudscraper. Configures browser headers and creates session for
+        making authenticated requests to the Doral reservation system.
+
+        Configuration:
+            - Chrome browser simulation for compatibility
+            - Darwin platform for macOS compatibility
+            - Comprehensive headers for legitimate browser behavior
+            - Cloudflare protection bypass enabled
+        """
         self.base_url = "https://fldoralweb.myvscloud.com/webtrac/web/search.html"
         self.home_url = "https://fldoralweb.myvscloud.com/webtrac/web/splash.html"
         self.html_extractor = CourtAvailabilityHTMLExtractor()
@@ -40,7 +79,26 @@ class Scraper:
         logger.debug("Initialized Scraper with cloudscraper and base URL: %s", self.base_url)
 
     def _initialize_session(self):
-        """Initialize session by visiting the home page to get cookies and tokens."""
+        """
+        Initialize session by visiting the home page to get cookies and tokens.
+
+        Performs initial request to the Doral homepage to establish session
+        cookies and handle any Cloudflare challenges. This is required before
+        making requests to the search endpoints.
+
+        Returns:
+            bool: True if session initialization successful, False otherwise
+
+        Error Handling:
+            - Logs detailed error information for debugging
+            - Returns False on failure but doesn't raise exceptions
+            - Handles timeout and connection errors gracefully
+
+        Side Effects:
+            - Updates session cookies
+            - May solve Cloudflare challenges
+            - Logs session status for debugging
+        """
         logger.debug("Initializing cloudscraper session")
 
         try:
