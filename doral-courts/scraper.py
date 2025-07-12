@@ -13,6 +13,7 @@ class Scraper:
         self.base_url = "https://fldoralweb.myvscloud.com/webtrac/web/search.html"
         self.home_url = "https://fldoralweb.myvscloud.com/webtrac/web/splash.html"
         self.html_extractor = CourtAvailabilityHTMLExtractor()
+        self.last_request_urls = []  # Store actual URLs from recent requests
 
         # Create cloudscraper session to bypass Cloudflare protection
         self.session = cloudscraper.create_scraper(
@@ -160,6 +161,7 @@ class Scraper:
         all_courts = []
         all_html_content = []
         page = 1
+        self.last_request_urls = []  # Reset for this fetch operation
 
         try:
             while True:
@@ -176,6 +178,10 @@ class Scraper:
 
                 logger.debug("Making request to %s", self.base_url)
                 response = self.session.get(self.base_url, params=params, headers=headers)
+
+                # Capture the actual URL with query parameters
+                self.last_request_urls.append(response.url)
+                logger.debug("Actual request URL: %s", response.url)
 
                 if response.status_code == 200:
                     logger.debug("Successfully received response (status: %d, size: %d bytes)",
@@ -242,3 +248,13 @@ class Scraper:
             logger.warning("No court data could be retrieved from website")
 
         return all_courts, combined_html
+
+    def get_last_request_url(self) -> str:
+        """Get the most recent request URL with query parameters."""
+        if self.last_request_urls:
+            return str(self.last_request_urls[-1])
+        return self.base_url
+
+    def get_all_request_urls(self) -> list:
+        """Get all request URLs from the last fetch operation."""
+        return [str(url) for url in self.last_request_urls]

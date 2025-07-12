@@ -8,7 +8,7 @@ from scraper import Scraper
 from html_extractor import Court, TimeSlot
 from database import Database
 from logger import setup_logging, get_logger
-from utils import save_html_data, save_json_data, display_courts_table
+from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary
 from typing import List, Optional
 
 console = Console()
@@ -77,7 +77,7 @@ def list(ctx, sport: Optional[str], status: Optional[str], date: Optional[str], 
                 if save_data:
                     try:
                         html_path = save_html_data(html_content, "_list")
-                        json_path = save_json_data(courts, "_list")
+                        json_path = save_json_data(courts, "_list", scraper.get_last_request_url())
                         console.print(f"[green]Data saved to:[/green]")
                         console.print(f"  HTML: {html_path}")
                         console.print(f"  JSON: {json_path}")
@@ -206,6 +206,89 @@ def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
         console.print(table)
 
 @cli.command()
+@click.option('--mode', type=click.Choice(['detailed', 'summary'], case_sensitive=False),
+              default='detailed', help='Display mode: detailed (full court info) or summary (time slots analysis)')
+@click.option('--refresh', is_flag=True, help='Fetch fresh data from website before displaying')
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
+              help='Filter by sport type')
+@click.option('--date', help='Date to check (MM/DD/YYYY format)')
+@click.pass_context
+def data(ctx, mode: str, refresh: bool, sport: Optional[str], date: Optional[str]):
+    """Display comprehensive view of all scraped data from the website."""
+    logger.info("Starting comprehensive data display")
+    logger.debug(f"Mode: {mode}, Refresh: {refresh}, Sport: {sport}, Date: {date}")
+
+    db = Database()
+
+    # Initialize scraper and URL tracking
+    scraper = Scraper()
+    actual_url = None
+
+    # Refresh data if requested
+    if refresh:
+        logger.info("Fetching fresh data from website")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+        ) as progress:
+            task = progress.add_task("Fetching latest data...", total=None)
+
+            # Check if we should save data
+            save_data = ctx.obj.get('save_data', False)
+            if save_data:
+                courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+            else:
+                courts = scraper.fetch_courts(date=date, sport_filter=sport)
+                html_content = ""
+
+            # Get the actual URL used for the request
+            actual_url = scraper.get_last_request_url()
+
+            if courts:
+                logger.info(f"Successfully fetched {len(courts)} courts from website")
+                inserted_count = db.insert_courts(courts)
+                logger.debug(f"Inserted/updated {inserted_count} courts in database")
+                progress.update(task, description=f"Fetched {len(courts)} courts")
+
+                # Save data if requested
+                if save_data:
+                    try:
+                        html_path = save_html_data(html_content, "_data")
+                        json_path = save_json_data(courts, "_data", actual_url)
+                        console.print(f"[green]Data saved to:[/green]")
+                        console.print(f"  HTML: {html_path}")
+                        console.print(f"  JSON: {json_path}")
+                    except Exception as e:
+                        logger.error(f"Error saving data: {e}")
+                        console.print(f"[red]Error saving data: {e}[/red]")
+            else:
+                logger.error("No court data could be retrieved from website")
+                console.print("[red]Unable to fetch court data from website.[/red]")
+
+    # Get courts from database
+    courts = db.get_courts(
+        sport_type=sport.title() if sport else None,
+        date=date
+    )
+
+    logger.info(f"Found {len(courts)} courts for comprehensive display")
+
+    if not courts:
+        console.print("[red]No courts found matching your criteria.[/red]")
+        console.print("[blue]Try running: doral-courts data --refresh[/blue]")
+        return
+
+    # Use actual URL if we refreshed, otherwise use base URL with note
+    display_url = actual_url if actual_url else f"{scraper.base_url} (cached data)"
+
+    # Display data based on mode
+    if mode == 'detailed':
+        display_detailed_court_data(courts, display_url)
+    else:  # summary mode
+        display_time_slots_summary(courts, display_url)
+
+@cli.command()
 @click.option('--days', default=7, help='Remove data older than N days')
 @click.pass_context
 def cleanup(ctx, days: int):
@@ -286,7 +369,7 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
                         try:
                             timestamp = datetime.now().strftime("%H%M%S")
                             html_path = save_html_data(html_content, f"_watch_{timestamp}")
-                            json_path = save_json_data(courts, f"_watch_{timestamp}")
+                            json_path = save_json_data(courts, f"_watch_{timestamp}", scraper.get_last_request_url())
                             logger.info(f"Watch data saved - HTML: {html_path}, JSON: {json_path}")
                         except Exception as e:
                             logger.error(f"Error saving watch data: {e}")
