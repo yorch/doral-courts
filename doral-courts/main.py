@@ -9,7 +9,7 @@ from scraper import Scraper
 from html_extractor import Court, TimeSlot
 from database import Database
 from logger import setup_logging, get_logger
-from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary
+from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary, display_available_slots_table
 from typing import List, Optional
 
 console = Console()
@@ -480,6 +480,82 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
     except KeyboardInterrupt:
         logger.info("Watch mode stopped by user")
         console.print("\n[yellow]Monitoring stopped.[/yellow]")
+
+@cli.command(name='list-available-slots')
+@click.option('--date', required=True, help='Date to check (MM/DD/YYYY format)')
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
+              help='Filter by sport type')
+@click.option('--location', help='Filter by location (e.g., "Doral Central Park")')
+@click.pass_context
+def list_available_slots(ctx, date: str, sport: Optional[str], location: Optional[str]):
+    """List all available time slots by court for a specific date."""
+    logger.info("Starting available slots listing - fetching fresh data")
+    logger.debug(f"Date: {date}, Sport: {sport}, Location: {location}")
+
+    db = Database()
+
+    # Always fetch fresh data from website
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching court data...", total=None)
+
+        scraper = Scraper()
+
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=date, sport_filter=sport)
+        else:
+            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            html_content = ""
+
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
+            if save_data:
+                try:
+                    html_path = save_html_data(html_content, "_available_slots")
+                    json_path = save_json_data(courts, "_available_slots", scraper.get_last_request_url())
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            return
+
+    # Apply filters to fresh data
+    logger.debug("Applying filters to fresh data")
+    filtered_courts = courts
+
+    if sport:
+        filtered_courts = [court for court in filtered_courts if court.sport_type.lower() == sport.lower()]
+        logger.debug(f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts")
+
+    if location:
+        filtered_courts = [court for court in filtered_courts if location.lower() in court.location.lower()]
+        logger.debug(f"Applied location filter '{location}': {len(filtered_courts)} courts")
+
+    logger.info(f"Found {len(filtered_courts)} courts for available slots display")
+
+    if not filtered_courts:
+        console.print("[red]No courts found matching your criteria.[/red]")
+        return
+
+    # Display available slots table
+    display_available_slots_table(filtered_courts, date, scraper.get_last_request_url())
 
 
 if __name__ == "__main__":
