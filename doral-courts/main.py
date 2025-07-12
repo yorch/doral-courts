@@ -9,7 +9,7 @@ from scraper import Scraper
 from html_extractor import Court, TimeSlot
 from database import Database
 from logger import setup_logging, get_logger
-from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary, display_available_slots_table, parse_date_input
+from utils import save_html_data, save_json_data, display_courts_table, display_detailed_court_data, display_time_slots_summary, display_available_slots_table, parse_date_input, display_courts_list, display_locations_list
 from typing import List, Optional
 
 console = Console()
@@ -598,6 +598,134 @@ def list_available_slots(ctx, date: Optional[str], sport: Optional[str], locatio
 
     # Display available slots table
     display_available_slots_table(filtered_courts, parsed_date, scraper.get_last_request_url())
+
+@cli.command(name='list-courts')
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
+              help='Filter by sport type')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
+@click.pass_context
+def list_courts(ctx, sport: Optional[str], date: Optional[str]):
+    """List all available court names."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
+    logger.info("Starting court names listing - fetching fresh data")
+    logger.debug(f"Sport: {sport}, Date: {date} -> {parsed_date}")
+
+    db = Database()
+
+    # Always fetch fresh data from website
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching court data...", total=None)
+
+        scraper = Scraper()
+
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date, sport_filter=sport)
+        else:
+            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
+            html_content = ""
+
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
+            if save_data:
+                try:
+                    html_path = save_html_data(html_content, "_list_courts")
+                    json_path = save_json_data(courts, "_list_courts", scraper.get_last_request_url())
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            return
+
+    # Display courts list
+    display_courts_list(courts, sport)
+
+@cli.command(name='list-locations')
+@click.option('--sport', type=click.Choice(['tennis', 'pickleball'], case_sensitive=False),
+              help='Filter by sport type')
+@click.option('--date', help='Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N')
+@click.pass_context
+def list_locations(ctx, sport: Optional[str], date: Optional[str]):
+    """List all available locations with court counts."""
+    # Parse date input
+    try:
+        parsed_date = parse_date_input(date)
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+        return
+
+    logger.info("Starting locations listing - fetching fresh data")
+    logger.debug(f"Sport: {sport}, Date: {date} -> {parsed_date}")
+
+    db = Database()
+
+    # Always fetch fresh data from website
+    logger.info("Fetching fresh data from website")
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Fetching court data...", total=None)
+
+        scraper = Scraper()
+
+        # Check if we should save data
+        save_data = ctx.obj.get('save_data', False)
+        if save_data:
+            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date, sport_filter=sport)
+        else:
+            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
+            html_content = ""
+
+        if courts:
+            logger.info(f"Successfully fetched {len(courts)} courts from website")
+            # Store in database for historical tracking
+            inserted_count = db.insert_courts(courts)
+            logger.debug(f"Inserted/updated {inserted_count} courts in database for tracking")
+            progress.update(task, description=f"Fetched {len(courts)} courts")
+
+            # Save data if requested
+            if save_data:
+                try:
+                    html_path = save_html_data(html_content, "_list_locations")
+                    json_path = save_json_data(courts, "_list_locations", scraper.get_last_request_url())
+                    console.print(f"[green]Data saved to:[/green]")
+                    console.print(f"  HTML: {html_path}")
+                    console.print(f"  JSON: {json_path}")
+                except Exception as e:
+                    logger.error(f"Error saving data: {e}")
+                    console.print(f"[red]Error saving data: {e}[/red]")
+        else:
+            logger.error("No court data could be retrieved from website")
+            console.print("[red]Unable to fetch court data from website.[/red]")
+            return
+
+    # Display locations list
+    display_locations_list(courts, sport)
 
 
 if __name__ == "__main__":
