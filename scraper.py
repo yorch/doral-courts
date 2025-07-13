@@ -179,7 +179,7 @@ class Scraper:
             'features': '',
             'keyword': '',
             'keywordoption': 'Match One',
-            'blockstodisplay': '24',
+            'blockstodisplay': '50',
             'frheadcount': '0',
             'primarycode': '',
             'features1': '',
@@ -267,13 +267,63 @@ class Scraper:
                         break
 
                     logger.debug("Found %d courts on page %d", len(courts), page)
-                    all_courts.extend(courts)
+
+                    # Check for duplicates - if this page returns the same courts as before, stop
+                    existing_court_names = set(court.name for court in all_courts)
+                    new_court_names = set(court.name for court in courts)
+                    duplicate_count = len(new_court_names.intersection(existing_court_names))
+
+                    if duplicate_count > 0 and page > 1:
+                        logger.warning("Found %d duplicate courts on page %d (%.1f%% duplicates)",
+                                     duplicate_count, page, (duplicate_count / len(courts)) * 100)
+
+                        # If more than 50% of courts are duplicates, likely we're getting repeated data
+                        if duplicate_count / len(courts) > 0.5:
+                            logger.warning("Page %d contains mostly duplicate data (%.1f%%), stopping pagination",
+                                         page, (duplicate_count / len(courts)) * 100)
+                            break
+
+                    # Only add new courts (deduplicate)
+                    new_courts = [court for court in courts if court.name not in existing_court_names]
+                    all_courts.extend(new_courts)
+
+                    if new_courts:
+                        logger.debug("Added %d new courts from page %d (skipped %d duplicates)",
+                                   len(new_courts), page, len(courts) - len(new_courts))
+                    else:
+                        logger.debug("No new courts found on page %d, all were duplicates", page)
 
                     # Check if there's a next page
-                    next_page = soup.find('a', text='Next') or soup.find('a', class_='next-page')
-                    if not next_page:
-                        logger.debug("No next page link found, stopping pagination")
+                    # Look for pagination buttons with higher page numbers
+                    current_page = page
+                    next_page_value = str(current_page + 1)
+
+                    # Look for button with data-click-set-value pointing to next page
+                    next_page_button = soup.find('button', {'data-click-set-value': next_page_value})
+
+                    # Also check for "Go To Last Page" button to see if more pages exist
+                    last_page_button = soup.find('button', class_='paging__lastpage')
+
+                    if not next_page_button and not last_page_button:
+                        logger.debug("No next page button found, stopping pagination")
                         break
+
+                    # If we have a next page button, continue
+                    if next_page_button:
+                        logger.debug("Found next page button for page %s", next_page_value)
+                    # If no direct next page button but there's a last page button, check if we can continue
+                    elif last_page_button:
+                        last_page_value = last_page_button.get('data-click-set-value', '1')
+                        try:
+                            max_page = int(last_page_value)
+                            if current_page >= max_page:
+                                logger.debug("Already at last page (%d), stopping pagination", max_page)
+                                break
+                            else:
+                                logger.debug("Can continue to page %d (last page is %d)", current_page + 1, max_page)
+                        except (ValueError, TypeError):
+                            logger.debug("Could not determine last page number, stopping pagination")
+                            break
 
                     page += 1
 
