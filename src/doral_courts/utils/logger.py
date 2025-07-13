@@ -2,6 +2,7 @@ import logging
 import sys
 from typing import Optional
 
+
 def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
     """
     Configure logging for the application.
@@ -36,8 +37,8 @@ def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
 
     # Create formatter
     formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        datefmt='%Y-%m-%d %H:%M:%S'
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
     )
 
     # Create console handler
@@ -61,6 +62,7 @@ def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
     if not verbose:
         logging.getLogger("requests").setLevel(logging.WARNING)
         logging.getLogger("urllib3").setLevel(logging.WARNING)
+
 
 def get_logger(name: str) -> logging.Logger:
     """

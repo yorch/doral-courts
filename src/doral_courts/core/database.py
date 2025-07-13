@@ -1,10 +1,12 @@
 import sqlite3
-from typing import List, Optional
 from datetime import datetime
-from html_extractor import Court, TimeSlot
-from logger import get_logger
+from typing import List, Optional
+
+from ..utils.logger import get_logger
+from .html_extractor import Court, TimeSlot
 
 logger = get_logger(__name__)
+
 
 class Database:
     """
@@ -71,7 +73,8 @@ class Database:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS courts (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     name TEXT NOT NULL,
@@ -85,17 +88,21 @@ class Database:
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(name, date, time_slot)
                 )
-            ''')
+            """
+            )
 
             # Migration: Check if surface_type column exists and rename it to capacity
             cursor.execute("PRAGMA table_info(courts)")
             columns = [column[1] for column in cursor.fetchall()]
-            if 'surface_type' in columns and 'capacity' not in columns:
+            if "surface_type" in columns and "capacity" not in columns:
                 logger.info("Migrating database: renaming surface_type to capacity")
-                cursor.execute('ALTER TABLE courts RENAME COLUMN surface_type TO capacity')
+                cursor.execute(
+                    "ALTER TABLE courts RENAME COLUMN surface_type TO capacity"
+                )
             logger.debug("Created courts table")
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE TABLE IF NOT EXISTS time_slots (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     court_id INTEGER NOT NULL,
@@ -107,38 +114,51 @@ class Database:
                     FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE,
                     UNIQUE(court_id, start_time, end_time, date)
                 )
-            ''')
+            """
+            )
             logger.debug("Created time_slots table")
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_sport_type
                 ON courts(sport_type)
-            ''')
+            """
+            )
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_availability
                 ON courts(availability_status)
-            ''')
+            """
+            )
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_date
                 ON courts(date)
-            ''')
+            """
+            )
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_court_id
                 ON time_slots(court_id)
-            ''')
+            """
+            )
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_date
                 ON time_slots(date)
-            ''')
+            """
+            )
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_status
                 ON time_slots(status)
-            ''')
+            """
+            )
             logger.debug("Created database indexes")
 
             conn.commit()
@@ -183,59 +203,77 @@ class Database:
 
             for i, court in enumerate(courts):
                 try:
-                    logger.debug("Inserting court %d/%d: %s", i + 1, len(courts), court.name)
+                    logger.debug(
+                        "Inserting court %d/%d: %s", i + 1, len(courts), court.name
+                    )
 
                     # Insert or update the main court record
-                    cursor.execute('''
+                    cursor.execute(
+                        """
                         INSERT OR REPLACE INTO courts
                         (name, sport_type, location, capacity, availability_status,
                          date, time_slot, price, last_updated)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    ''', (
-                        court.name,
-                        court.sport_type,
-                        court.location,
-                        court.capacity,
-                        court.availability_status,
-                        court.date,
-                        court.time_slot,
-                        court.price
-                    ))
+                    """,
+                        (
+                            court.name,
+                            court.sport_type,
+                            court.location,
+                            court.capacity,
+                            court.availability_status,
+                            court.date,
+                            court.time_slot,
+                            court.price,
+                        ),
+                    )
 
                     # Get the court ID
                     court_id = cursor.lastrowid
                     if court_id is None:
                         # If INSERT OR REPLACE updated an existing record, get the ID
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             SELECT id FROM courts
                             WHERE name = ? AND date = ? AND time_slot = ?
-                        ''', (court.name, court.date, court.time_slot))
+                        """,
+                            (court.name, court.date, court.time_slot),
+                        )
                         result = cursor.fetchone()
                         court_id = result[0] if result else None
 
                     # Insert time slots if available
                     if court_id and court.time_slots:
-                        logger.debug("Inserting %d time slots for court %s", len(court.time_slots), court.name)
+                        logger.debug(
+                            "Inserting %d time slots for court %s",
+                            len(court.time_slots),
+                            court.name,
+                        )
 
                         # Clear existing time slots for this court and date
-                        cursor.execute('''
+                        cursor.execute(
+                            """
                             DELETE FROM time_slots
                             WHERE court_id = ? AND date = ?
-                        ''', (court_id, court.date))
+                        """,
+                            (court_id, court.date),
+                        )
 
                         # Insert new time slots
                         for slot in court.time_slots:
-                            cursor.execute('''
+                            cursor.execute(
+                                """
                                 INSERT INTO time_slots
                                 (court_id, start_time, end_time, status, date, last_updated)
                                 VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                            ''', (
-                                court_id,
-                                slot.start_time,
-                                slot.end_time,
-                                slot.status,
-                                court.date
-                            ))
+                            """,
+                                (
+                                    court_id,
+                                    slot.start_time,
+                                    slot.end_time,
+                                    slot.status,
+                                    court.date,
+                                ),
+                            )
 
                     inserted_count += 1
 
@@ -251,11 +289,15 @@ class Database:
         self,
         sport_type: Optional[str] = None,
         availability_status: Optional[str] = None,
-        date: Optional[str] = None
+        date: Optional[str] = None,
     ) -> List[Court]:
         """Retrieve courts from the database with optional filters."""
-        logger.debug("Querying courts with filters - Sport: %s, Status: %s, Date: %s",
-                    sport_type, availability_status, date)
+        logger.debug(
+            "Querying courts with filters - Sport: %s, Status: %s, Date: %s",
+            sport_type,
+            availability_status,
+            date,
+        )
 
         query = "SELECT id, name, sport_type, location, capacity, availability_status, date, time_slot, price FROM courts WHERE 1=1"
         params = []
@@ -298,10 +340,15 @@ class Database:
                 availability_status=row[5],
                 date=row[6],
                 time_slots=time_slots,
-                price=row[8]
+                price=row[8],
             )
             courts.append(court)
-            logger.debug("Loaded court %d: %s with %d time slots", i + 1, court.name, len(time_slots))
+            logger.debug(
+                "Loaded court %d: %s with %d time slots",
+                i + 1,
+                court.name,
+                len(time_slots),
+            )
 
         logger.info("Retrieved %d courts from database", len(courts))
         return courts
@@ -310,21 +357,20 @@ class Database:
         """Load time slots for a specific court and date."""
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT start_time, end_time, status
                 FROM time_slots
                 WHERE court_id = ? AND date = ?
                 ORDER BY start_time
-            ''', (court_id, date))
+            """,
+                (court_id, date),
+            )
             rows = cursor.fetchall()
 
         time_slots = []
         for row in rows:
-            time_slot = TimeSlot(
-                start_time=row[0],
-                end_time=row[1],
-                status=row[2]
-            )
+            time_slot = TimeSlot(start_time=row[0], end_time=row[1], status=row[2])
             time_slots.append(time_slot)
 
         return time_slots
@@ -337,36 +383,52 @@ class Database:
             cursor = conn.cursor()
 
             # First count how many will be deleted
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM courts
                 WHERE last_updated < datetime('now', '-' || ? || ' days')
-            ''', (days_old,))
+            """,
+                (days_old,),
+            )
             count_to_delete = cursor.fetchone()[0]
             logger.debug("Found %d court records to delete", count_to_delete)
 
             # Count time slots to be deleted
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT COUNT(*) FROM time_slots
                 WHERE last_updated < datetime('now', '-' || ? || ' days')
-            ''', (days_old,))
+            """,
+                (days_old,),
+            )
             time_slots_to_delete = cursor.fetchone()[0]
             logger.debug("Found %d time slot records to delete", time_slots_to_delete)
 
             # Delete time slots first (due to foreign key constraints)
-            cursor.execute('''
+            cursor.execute(
+                """
                 DELETE FROM time_slots
                 WHERE last_updated < datetime('now', '-' || ? || ' days')
-            ''', (days_old,))
+            """,
+                (days_old,),
+            )
 
             # Delete courts
-            cursor.execute('''
+            cursor.execute(
+                """
                 DELETE FROM courts
                 WHERE last_updated < datetime('now', '-' || ? || ' days')
-            ''', (days_old,))
+            """,
+                (days_old,),
+            )
 
             conn.commit()
 
-        logger.info("Deleted %d court records and %d time slot records", count_to_delete, time_slots_to_delete)
+        logger.info(
+            "Deleted %d court records and %d time slot records",
+            count_to_delete,
+            time_slots_to_delete,
+        )
 
     def get_stats(self) -> dict:
         """Get database statistics."""
@@ -379,11 +441,15 @@ class Database:
             total_courts = cursor.fetchone()[0]
             logger.debug("Total courts in database: %d", total_courts)
 
-            cursor.execute("SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type")
+            cursor.execute(
+                "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
+            )
             sport_counts = dict(cursor.fetchall())
             logger.debug("Sport breakdown: %s", sport_counts)
 
-            cursor.execute("SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status")
+            cursor.execute(
+                "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status"
+            )
             availability_counts = dict(cursor.fetchall())
             logger.debug("Availability breakdown: %s", availability_counts)
 
@@ -392,10 +458,10 @@ class Database:
             logger.debug("Last update: %s", last_update)
 
         stats = {
-            'total_courts': total_courts,
-            'sport_counts': sport_counts,
-            'availability_counts': availability_counts,
-            'last_updated': last_update
+            "total_courts": total_courts,
+            "sport_counts": sport_counts,
+            "availability_counts": availability_counts,
+            "last_updated": last_update,
         }
 
         logger.info("Generated database statistics")

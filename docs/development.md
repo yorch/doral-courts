@@ -4,63 +4,131 @@ Guide for developers who want to contribute to or extend the Doral Courts CLI.
 
 ## Architecture Overview
 
-The application follows a modular architecture with clear separation of concerns:
+The application follows a modern Python package structure with clear separation of concerns:
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   main.py       │    │   scraper.py     │    │ html_extractor. │
-│   (CLI Interface)│───▶│   (Web Scraping) │───▶│ py (HTML Parse) │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-         │                                              │
-         ▼                                              ▼
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   utils.py      │    │   database.py    │    │   logger.py     │
-│   (Display)     │    │   (Data Storage) │    │   (Logging)     │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+src/doral_courts/
+├── cli/                    # Command-line interface
+│   ├── commands/          # Individual command modules
+│   └── main.py           # CLI entry point and command registration
+├── core/                  # Core business logic
+│   ├── scraper.py        # Web scraping with Cloudflare bypass
+│   ├── html_extractor.py # HTML parsing and data models
+│   └── database.py       # SQLite database operations
+├── display/               # UI formatting and display
+│   ├── tables.py         # Rich table displays
+│   ├── detailed.py       # Detailed data views
+│   └── lists.py          # List-based displays
+└── utils/                 # Utility functions
+    ├── logger.py         # Logging configuration
+    ├── date_utils.py     # Date parsing utilities
+    └── file_utils.py     # File I/O operations
 ```
+
+## Modular CLI Architecture
+
+The CLI uses a modular command structure where each command is in its own module:
+
+```
+cli/commands/
+├── list_cmd.py                # Main court listing command
+├── stats_cmd.py               # Database statistics
+├── slots_cmd.py               # Time slot details
+├── data_cmd.py                # Comprehensive data view
+├── cleanup_cmd.py             # Data cleanup
+├── history_cmd.py             # Historical data
+├── watch_cmd.py               # Real-time monitoring
+├── list_available_slots_cmd.py # Available slots listing
+├── list_courts_cmd.py         # Court names listing
+└── list_locations_cmd.py      # Location listing
+```
+
+Each command module:
+
+- Defines a single Click command
+- Handles its own options and arguments
+- Imports only required dependencies
+- Follows consistent error handling patterns
 
 ## Core Components
 
-### main.py
+### CLI Layer (`cli/`)
+
+**main.py**
 
 - CLI entry point using Click framework
-- Command definitions and argument parsing
-- Orchestrates other components
-- Handles global options (verbose, save-data)
+- Command registration and global options
+- Context management for shared state
 
-### scraper.py
+**commands/**
+
+- Individual command implementations
+- Each command is self-contained
+- Consistent parameter validation
+- Rich progress indicators and error handling
+
+### Core Logic (`core/`)
+
+**scraper.py**
 
 - Web scraping using cloudscraper (Cloudflare bypass)
-- HTTP request handling
-- Rate limiting and retry logic
-- URL management
+- HTTP request handling with retry logic
+- Pagination support for multi-page results
+- Rate limiting and deduplication
 
-### html_extractor.py
+**html_extractor.py**
 
 - BeautifulSoup-based HTML parsing
 - Data model definitions (Court, TimeSlot dataclasses)
-- Court availability detection logic
-- Time slot extraction
+- Court availability detection
+- Time slot extraction and status parsing
 
-### database.py
+**database.py**
 
 - SQLite database operations
-- Historical data storage
+- Historical data storage and retrieval
 - Data migration handling
-- Query interface
+- Statistics and analytics queries
 
-### utils.py
+### Display Layer (`display/`)
 
-- Display functions using Rich library
-- Data export functionality (HTML/JSON)
-- Date parsing logic
-- Formatting utilities
+**tables.py**
 
-### logger.py
+- Rich table formatting for court data
+- Availability status color coding
+- Time slot summaries and breakdowns
+
+**detailed.py**
+
+- Comprehensive court data displays
+- Time slot analysis and summaries
+- Panel-based detailed views
+
+**lists.py**
+
+- Simple list displays for court names
+- Location summaries with counts
+- Filtered and sorted outputs
+
+### Utilities (`utils/`)
+
+**logger.py**
 
 - Centralized logging configuration
-- Configurable log levels
-- File and console output
+- Configurable verbosity levels
+- Module-specific loggers
+
+**date_utils.py**
+
+- Flexible date parsing (relative, absolute, offsets)
+- Date validation and formatting
+- Business logic for date handling
+
+**file_utils.py**
+
+- Data export functionality (HTML/JSON)
+- File naming conventions
+- Directory management
 
 ## Development Setup
 
@@ -78,415 +146,179 @@ git clone https://github.com/yorch/doral-courts.git
 uv sync --group dev
 
 # Verify setup
-uv run python -m pytest test_html_extractor.py -v
-uv run python main.py --help
+uv run doral-courts --help
+uv run pytest -v
 ```
 
-### Development Dependencies
-
-```toml
-[dependency-groups]
-dev = [
-    "pytest>=8.4.1",
-    # Add other dev tools as needed
-    # "black",
-    # "isort",
-    # "mypy",
-    # "coverage",
-]
-```
-
-## Code Style
-
-### General Guidelines
-
-- Follow PEP 8 style guidelines
-- Use type hints where possible
-- Write docstrings for functions and classes
-- Keep functions focused and small
-- Use meaningful variable names
-
-### Naming Conventions
-
-- Files: `snake_case.py`
-- Functions: `snake_case()`
-- Classes: `PascalCase`
-- Constants: `UPPER_CASE`
-- Variables: `snake_case`
-
-### Example Code Style
-
-```python
-from typing import List, Optional
-from dataclasses import dataclass
-
-@dataclass
-class Court:
-    """Represents a court with its availability information."""
-    name: str
-    sport_type: str
-    location: str
-    capacity: str
-    availability_status: str
-    date: str
-    time_slots: List[TimeSlot]
-    price: Optional[str] = None
-
-def parse_date_input(date_input: Optional[str] = None) -> str:
-    """
-    Parse date input supporting both absolute and relative formats.
-
-    Args:
-        date_input: Date string in various formats
-
-    Returns:
-        Date string in MM/DD/YYYY format
-
-    Raises:
-        ValueError: If date format is invalid
-    """
-    if date_input is None:
-        return datetime.now().strftime("%m/%d/%Y")
-    # ... implementation
-```
-
-## Testing
-
-### Test Structure
-
-Tests are located in `test_html_extractor.py` and cover:
-
-- HTML parsing functionality
-- Data extraction logic
-- Error handling
-- Edge cases
-
-### Running Tests
+### Testing
 
 ```bash
 # Run all tests
-uv run python -m pytest test_html_extractor.py -v
+uv run pytest -v
 
 # Run with coverage
-uv run python -m pytest --cov=. test_html_extractor.py
+uv run pytest --cov=src
 
-# Run specific test
-uv run python -m pytest test_html_extractor.py::TestCourtAvailabilityHTMLExtractor::test_parse_court_data_single_court -v
+# Run specific test file
+uv run pytest tests/unit/test_html_extractor.py -v
+
+# Watch mode for development
+uv run pytest --watch
 ```
 
-### Writing Tests
+### Code Quality
 
-```python
-def test_new_feature(self):
-    """Test description of what this test covers."""
-    # Arrange
-    html = """<html>...</html>"""
-    soup = BeautifulSoup(html, 'html.parser')
+```bash
+# Linting with ruff
+uv run ruff check src/
 
-    # Act
-    result = self.extractor.parse_court_data(soup)
+# Formatting with ruff
+uv run ruff format src/
 
-    # Assert
-    self.assertEqual(len(result), 1)
-    self.assertEqual(result[0].name, "Expected Name")
+# Type checking with mypy
+uv run mypy src/
 ```
 
-### Test Guidelines
+## Project Structure
 
-- Test both happy path and edge cases
-- Use descriptive test names
-- Include docstrings for complex tests
-- Mock external dependencies
-- Test error conditions
+```
+doral-courts/
+├── src/
+│   └── doral_courts/           # Main package
+│       ├── __init__.py         # Package initialization
+│       ├── cli/                # CLI commands and interface
+│       ├── core/               # Business logic
+│       ├── display/            # UI formatting
+│       └── utils/              # Utility functions
+├── tests/                      # Test suite
+│   ├── unit/                   # Unit tests
+│   ├── integration/            # Integration tests
+│   └── fixtures/               # Test data
+├── docs/                       # Documentation
+├── data/                       # Exported data files
+├── pyproject.toml              # Project configuration
+└── README.md                   # Project overview
+```
 
-## Adding New Features
+## Adding New Commands
 
-### Adding a New Command
+To add a new command:
 
-1. **Define the command in main.py**:
+1. **Create command module** in `src/doral_courts/cli/commands/`:
 
 ```python
-@cli.command(name='new-command')
-@click.option('--option', help='Description')
+# src/doral_courts/cli/commands/my_cmd.py
+import click
+from rich.console import Console
+from ...core.database import Database
+from ...utils.logger import get_logger
+
+logger = get_logger(__name__)
+console = Console()
+
+@click.command()
+@click.option('--option', help='Command option')
 @click.pass_context
-def new_command(ctx, option: Optional[str]):
-    """Command description."""
-    # Implementation
+def my_command(ctx, option):
+    """Description of my command."""
+    logger.info("Running my command")
+    # Implementation here
 ```
 
-2. **Add utility functions in utils.py**:
+2. **Register command** in `src/doral_courts/cli/main.py`:
 
 ```python
-def display_new_data(data: List[Any]) -> None:
-    """Display function for new command."""
-    # Implementation using Rich tables/panels
+from .commands.my_cmd import my_command
+
+# Add to CLI group
+cli.add_command(my_command)
 ```
 
-3. **Update imports**:
+3. **Add tests** in `tests/unit/`:
 
 ```python
-from utils import ..., display_new_data
+# tests/unit/test_my_cmd.py
+import pytest
+from click.testing import CliRunner
+from doral_courts.cli.commands.my_cmd import my_command
+
+def test_my_command():
+    runner = CliRunner()
+    result = runner.invoke(my_command, ['--option', 'value'])
+    assert result.exit_code == 0
 ```
 
-4. **Add tests**:
+## Best Practices
 
-```python
-def test_new_command_functionality(self):
-    """Test the new command works correctly."""
-    # Test implementation
-```
+### Code Organization
 
-### Adding New Data Fields
+- **Single Responsibility**: Each module has a clear, single purpose
+- **Dependency Injection**: Pass dependencies rather than importing globally
+- **Error Handling**: Consistent error handling patterns across commands
+- **Logging**: Use module-specific loggers with appropriate levels
 
-1. **Update the dataclass in html_extractor.py**:
+### CLI Design
 
-```python
-@dataclass
-class Court:
-    # ... existing fields
-    new_field: str
-```
+- **Progressive Disclosure**: Simple commands by default, options for complexity
+- **Consistent Naming**: Follow established patterns for options and commands
+- **Rich Output**: Use colors and formatting for better UX
+- **Context Awareness**: Use Click context for shared state
 
-2. **Update parsing logic**:
+### Testing
 
-```python
-def parse_court_data(self, soup: BeautifulSoup) -> List[Court]:
-    # ... existing parsing
-    new_field = cell.find('td', {'data-title': 'New Field'})
-    new_field_value = new_field.get_text(strip=True) if new_field else "Default"
-```
+- **Unit Tests**: Test individual functions and classes
+- **Integration Tests**: Test command workflows end-to-end
+- **Fixtures**: Use realistic test data
+- **Mocking**: Mock external dependencies (web requests, file I/O)
 
-3. **Update database schema in database.py**:
+### Documentation
 
-```python
-def init_database(self):
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS courts (
-            -- existing columns
-            new_field TEXT,
-            -- ...
-        )
-    ''')
-
-    # Add migration logic if needed
-```
-
-4. **Update display functions in utils.py**:
-
-```python
-def display_courts_table(courts: List[Court]):
-    table.add_column("New Field", style="blue")
-    # ...
-    table.add_row(
-        # ... existing columns
-        court.new_field
-    )
-```
-
-### Adding New Date Formats
-
-1. **Update parse_date_input in utils.py**:
-
-```python
-def parse_date_input(date_input: Optional[str] = None) -> str:
-    # Add new format to common_formats list
-    common_formats = [
-        "%Y-%m-%d",
-        "%m-%d-%Y",
-        # ... existing formats
-        "%d.%m.%Y",  # New format: DD.MM.YYYY
-    ]
-```
-
-2. **Update documentation**:
-
-- Add to `docs/date-formats.md`
-- Update help text in command options
-- Add examples
+- **Docstrings**: Comprehensive docstrings for all public functions
+- **Type Hints**: Use type hints for better code clarity
+- **Examples**: Include usage examples in documentation
+- **Architecture**: Keep architecture documentation updated
 
 ## Debugging
 
-### Logging
-
-```python
-# Add debug logging
-logger.debug(f"Processing court: {court_name}")
-logger.info(f"Found {len(courts)} courts")
-logger.warning("Unexpected HTML structure")
-logger.error(f"Failed to parse: {error}")
-```
-
-### Verbose Mode
-
-Run commands with `--verbose` flag for detailed logging:
+### Development Tools
 
 ```bash
-uv run python main.py list --verbose
-```
+# Run with verbose logging
+uv run doral-courts --verbose list
 
-### Data Inspection
+# Save data for analysis
+uv run doral-courts --save-data list
 
-Save data for inspection:
-
-```bash
-uv run python main.py data --save-data
-# Check data/ directory for HTML and JSON files
-```
-
-### Database Inspection
-
-```python
-# Debug database content
+# Interactive debugging
 uv run python -c "
-from database import Database
-db = Database()
-stats = db.get_stats()
-print(stats)
+from doral_courts.core.scraper import Scraper
+scraper = Scraper()
+# Interactive debugging here
 "
 ```
 
+### Common Issues
+
+1. **Import Errors**: Ensure you're using relative imports within the package
+2. **CLI Not Found**: Make sure `uv sync` was run to install the CLI entry point
+3. **Test Failures**: Run `uv run pytest -v` to see detailed test output
+4. **Web Scraping**: Use `--save-data` to inspect raw HTML for parsing issues
+
 ## Performance Considerations
 
-### Web Scraping
+- **Caching**: Database caching for historical data
+- **Pagination**: Efficient handling of multi-page results
+- **Deduplication**: Prevent duplicate data in database
+- **Rate Limiting**: Respectful web scraping practices
 
-- Use cloudscraper to handle Cloudflare protection
-- Implement reasonable delays between requests
-- Cache data locally when possible
-- Handle network errors gracefully
-
-### Database Operations
-
-- Use batch inserts for multiple records
-- Index frequently queried columns
-- Clean up old data periodically
-- Use transactions for consistency
-
-### Memory Usage
-
-- Process data in chunks for large datasets
-- Avoid keeping large HTML strings in memory
-- Use generators for large result sets
-
-## Error Handling
-
-### Network Errors
-
-```python
-try:
-    response = scraper.fetch_data()
-except requests.RequestException as e:
-    logger.error(f"Network error: {e}")
-    console.print("[red]Unable to fetch data from website.[/red]")
-    return
-```
-
-### HTML Parsing Errors
-
-```python
-try:
-    courts = extractor.parse_court_data(soup)
-except Exception as e:
-    logger.warning(f"Error parsing court data: {e}")
-    # Continue processing or return empty list
-```
-
-### Date Parsing Errors
-
-```python
-try:
-    parsed_date = parse_date_input(date)
-except ValueError as e:
-    console.print(f"[red]Error: {e}[/red]")
-    return
-```
-
-## Release Process
-
-### Version Management
-
-Update version in `pyproject.toml`:
-
-```toml
-[project]
-version = "0.2.0"
-```
-
-### Testing Before Release
-
-```bash
-# Run full test suite
-uv run python -m pytest test_html_extractor.py -v
-
-# Test all commands
-uv run python main.py --help
-uv run python main.py list-courts --help
-# ... test other commands
-
-# Test with real data
-uv run python main.py list --verbose
-```
-
-### Documentation Updates
-
-- Update README.md with new features
-- Add examples to docs/examples.md
-- Update command reference in docs/commands.md
-- Update date formats if changed
-
-## Contributing Guidelines
-
-### Pull Request Process
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Write tests for new functionality
-4. Ensure all tests pass
-5. Update documentation
-6. Submit pull request with clear description
+2. Create a feature branch: `git checkout -b feature/new-feature`
+3. Make changes and add tests
+4. Run the test suite: `uv run pytest`
+5. Run code quality checks: `uv run ruff check src/`
+6. Commit with descriptive messages
+7. Push to your fork and create a pull request
 
-### Code Review Checklist
-
-- [ ] Code follows style guidelines
-- [ ] Tests are included and passing
-- [ ] Documentation is updated
-- [ ] Error handling is appropriate
-- [ ] Performance impact is considered
-- [ ] Backwards compatibility is maintained
-
-### Commit Messages
-
-Use clear, descriptive commit messages:
-
-```
-Add list-courts command for displaying court names
-
-- Implements new CLI command to show unique court names
-- Supports sport filtering option
-- Includes comprehensive help text and examples
-- Adds utility function display_courts_list()
-```
-
-## Extending the Application
-
-### Adding New Data Sources
-
-1. Create new scraper module
-2. Implement common interface
-3. Update main.py to support multiple sources
-4. Add configuration options
-
-### Integration with Other Systems
-
-1. Add export formats (CSV, XML, etc.)
-2. Implement webhook notifications
-3. Add API endpoint wrappers
-4. Create calendar integration
-
-### UI Enhancements
-
-1. Add more Rich formatting options
-2. Implement interactive mode
-3. Add progress bars for long operations
-4. Create configuration file support
-
-This development guide should help you understand the codebase and contribute effectively to the project.
+For more details, see [CONTRIBUTING.md](../CONTRIBUTING.md).

@@ -40,7 +40,7 @@ List available courts with optional filters. Always fetches fresh data from webs
 ### Syntax
 
 ```bash
-uv run python main.py list [OPTIONS]
+uv run doral-courts list [OPTIONS]
 ```
 
 ### Options
@@ -53,16 +53,16 @@ uv run python main.py list [OPTIONS]
 
 ```bash
 # List all courts for today
-uv run python main.py list
+uv run doral-courts list
 
 # List tennis courts for tomorrow
-uv run python main.py list --sport tennis --date tomorrow
+uv run doral-courts list --sport tennis --date tomorrow
 
 # List available courts for next week
-uv run python main.py list --status available --date +7
+uv run doral-courts list --status available --date +7
 
 # Save data while listing
-uv run python main.py list --save-data --verbose
+uv run doral-courts list --save-data --verbose
 ```
 
 ### Output
@@ -86,7 +86,7 @@ List all available court names.
 ### Syntax
 
 ```bash
-uv run python main.py list-courts [OPTIONS]
+uv run doral-courts list-courts [OPTIONS]
 ```
 
 ### Options
@@ -98,13 +98,13 @@ uv run python main.py list-courts [OPTIONS]
 
 ```bash
 # List all court names
-uv run python main.py list-courts
+uv run doral-courts list-courts
 
 # List only tennis court names
-uv run python main.py list-courts --sport tennis
+uv run doral-courts list-courts --sport tennis
 
 # List court names for specific date
-uv run python main.py list-courts --date 07/15/2025
+uv run doral-courts list-courts --date 07/15/2025
 ```
 
 ### Output
@@ -120,7 +120,7 @@ List all available locations with court counts.
 ### Syntax
 
 ```bash
-uv run python main.py list-locations [OPTIONS]
+uv run doral-courts list-locations [OPTIONS]
 ```
 
 ### Options
@@ -132,13 +132,13 @@ uv run python main.py list-locations [OPTIONS]
 
 ```bash
 # List all locations
-uv run python main.py list-locations
+uv run doral-courts list-locations
 
 # List locations with pickleball courts
-uv run python main.py list-locations --sport pickleball
+uv run doral-courts list-locations --sport pickleball
 
 # List locations for tomorrow
-uv run python main.py list-locations --date tomorrow
+uv run doral-courts list-locations --date tomorrow
 ```
 
 ### Output
@@ -157,7 +157,7 @@ List all available time slots by court for a specific date.
 ### Syntax
 
 ```bash
-uv run python main.py list-available-slots [OPTIONS]
+uv run doral-courts list-available-slots [OPTIONS]
 ```
 
 ### Options
@@ -170,13 +170,13 @@ uv run python main.py list-available-slots [OPTIONS]
 
 ```bash
 # Show available slots for today
-uv run python main.py list-available-slots
+uv run doral-courts list-available-slots
 
 # Show tennis slots for tomorrow
-uv run python main.py list-available-slots --date tomorrow --sport tennis
+uv run doral-courts list-available-slots --date tomorrow --sport tennis
 
 # Show slots at specific location
-uv run python main.py list-available-slots --location "Doral Central Park"
+uv run doral-courts list-available-slots --location "Doral Central Park"
 ```
 
 ### Output
@@ -201,7 +201,7 @@ Show detailed time slot availability for courts. Always fetches fresh data.
 ### Syntax
 
 ```bash
-uv run python main.py slots [OPTIONS]
+uv run doral-courts slots [OPTIONS]
 ```
 
 ### Options
@@ -214,13 +214,13 @@ uv run python main.py slots [OPTIONS]
 
 ```bash
 # Show all time slots for today
-uv run python main.py slots
+uv run doral-courts slots
 
 # Show slots for specific court
-uv run python main.py slots --court "DCP Tennis Court 1"
+uv run doral-courts slots --court "DCP Tennis Court 1"
 
 # Show only available slots for tomorrow
-uv run python main.py slots --date tomorrow --available-only
+uv run doral-courts slots --date tomorrow --available-only
 ```
 
 ### Output
@@ -240,7 +240,7 @@ Display comprehensive view of all scraped data from the website. Always fetches 
 ### Syntax
 
 ```bash
-uv run python main.py data [OPTIONS]
+uv run doral-courts data [OPTIONS]
 ```
 
 ### Options
@@ -253,13 +253,13 @@ uv run python main.py data [OPTIONS]
 
 ```bash
 # Show detailed data view
-uv run python main.py data
+uv run doral-courts data
 
 # Show summary of time slots
-uv run python main.py data --mode summary
+uv run doral-courts data --mode summary
 
 # Show tennis data for specific date
-uv run python main.py data --sport tennis --date +3
+uv run doral-courts data --sport tennis --date +3
 ```
 
 ### Output
@@ -277,7 +277,7 @@ View historical court data from database (cached data).
 ### Syntax
 
 ```bash
-uv run python main.py history [OPTIONS]
+uv run doral-courts history [OPTIONS]
 ```
 
 ### Options
@@ -291,13 +291,13 @@ uv run python main.py history [OPTIONS]
 
 ```bash
 # Show historical data in table format
-uv run python main.py history
+uv run doral-courts history
 
 # Show detailed historical data for tennis
-uv run python main.py history --sport tennis --mode detailed
+uv run doral-courts history --sport tennis --mode detailed
 
 # Show summary for specific date
-uv run python main.py history --date yesterday --mode summary
+uv run doral-courts history --date yesterday --mode summary
 ```
 
 ### Output
@@ -317,7 +317,7 @@ Monitor court availability with real-time updates.
 ### Syntax
 
 ```bash
-uv run python main.py watch [OPTIONS]
+uv run doral-courts watch [OPTIONS]
 ```
 
 ### Options
@@ -330,13 +330,13 @@ uv run python main.py watch [OPTIONS]
 
 ```bash
 # Watch all courts, update every 5 minutes
-uv run python main.py watch
+uv run doral-courts watch
 
 # Watch tennis courts, update every 2 minutes
-uv run python main.py watch --sport tennis --interval 120
+uv run doral-courts watch --sport tennis --interval 120
 
 # Watch courts for tomorrow
-uv run python main.py watch --date tomorrow
+uv run doral-courts watch --date tomorrow
 ```
 
 ### Behavior
@@ -355,7 +355,7 @@ Show database statistics.
 ### Syntax
 
 ```bash
-uv run python main.py stats
+uv run doral-courts stats
 ```
 
 ### Output
@@ -376,7 +376,7 @@ Clean up old court data.
 ### Syntax
 
 ```bash
-uv run python main.py cleanup [OPTIONS]
+uv run doral-courts cleanup [OPTIONS]
 ```
 
 ### Options
@@ -387,10 +387,10 @@ uv run python main.py cleanup [OPTIONS]
 
 ```bash
 # Remove data older than 7 days
-uv run python main.py cleanup
+uv run doral-courts cleanup
 
 # Remove data older than 30 days
-uv run python main.py cleanup --days 30
+uv run doral-courts cleanup --days 30
 ```
 
 ### Output
@@ -405,10 +405,10 @@ Shows number of records removed from database.
 
 ```bash
 # Detailed tennis data with verbose logging and data export
-uv run python main.py data --sport tennis --mode detailed --verbose --save-data
+uv run doral-courts data --sport tennis --mode detailed --verbose --save-data
 
 # Watch pickleball courts at specific location
-uv run python main.py watch --sport pickleball --date tomorrow --interval 180
+uv run doral-courts watch --sport pickleball --date tomorrow --interval 180
 ```
 
 ### Using with Shell Scripts
@@ -416,7 +416,7 @@ uv run python main.py watch --sport pickleball --date tomorrow --interval 180
 ```bash
 #!/bin/bash
 # Check if tennis courts are available for tomorrow
-uv run python main.py list-available-slots --sport tennis --date tomorrow > tennis_slots.txt
+uv run doral-courts list-available-slots --sport tennis --date tomorrow > tennis_slots.txt
 ```
 
 ### Error Handling

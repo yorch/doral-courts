@@ -24,7 +24,7 @@ git clone https://github.com/yorch/doral-courts.git
 uv sync
 
 # Run the application
-uv run python main.py --help
+uv run doral-courts --help
 ```
 
 ### Method 2: Using pip and venv
@@ -46,7 +46,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Run the application
-python main.py --help
+doral-courts --help
 ```
 
 ## Verification
@@ -55,13 +55,13 @@ After installation, verify everything works:
 
 ```bash
 # Check if the CLI is working
-uv run python main.py --help
+uv run doral-courts --help
 
 # Run tests to ensure everything is set up correctly
-uv run python -m pytest test_html_extractor.py -v
+uv run pytest -v
 
 # Test basic functionality
-uv run python main.py list-courts --help
+uv run doral-courts list-courts --help
 ```
 
 ## Configuration
@@ -119,8 +119,8 @@ The application creates the following directories:
 If you encounter issues:
 
 1. Check the [examples documentation](./examples.md)
-2. Run with verbose logging: `uv run python main.py list --verbose`
-3. Check the test suite: `uv run python -m pytest test_html_extractor.py -v`
+2. Run with verbose logging: `uv run doral-courts list --verbose`
+3. Check the test suite: `uv run pytest -v`
 4. Create an issue with error details and system information
 
 ## Development Setup
@@ -134,10 +134,10 @@ For development and contributing:
 uv sync --group dev
 
 # Run tests
-uv run python -m pytest test_html_extractor.py -v
+uv run pytest -v
 
 # Run with coverage
-uv run python -m pytest --cov=. test_html_extractor.py
+uv run pytest --cov=src
 
 # Code formatting (if you add tools)
 uv run black .

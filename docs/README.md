@@ -44,16 +44,16 @@ This directory contains comprehensive documentation for the Doral Courts CLI app
 
 ```bash
 # List courts for today
-uv run python main.py list
+uv run doral-courts list
 
 # Show court names
-uv run python main.py list-courts
+uv run doral-courts list-courts
 
 # Available slots for tomorrow
-uv run python main.py list-available-slots --date tomorrow
+uv run doral-courts list-available-slots --date tomorrow
 
 # Monitor courts in real-time
-uv run python main.py watch
+uv run doral-courts watch
 ```
 
 ### Key Features

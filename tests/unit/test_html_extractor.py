@@ -1,7 +1,11 @@
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from bs4 import BeautifulSoup
-from html_extractor import CourtAvailabilityHTMLExtractor, Court, TimeSlot
+
+from doral_courts.core.html_extractor import (Court,
+                                              CourtAvailabilityHTMLExtractor,
+                                              TimeSlot)
 
 
 class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
@@ -10,11 +14,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
 
     def test_time_slot_creation(self):
         """Test TimeSlot dataclass creation."""
-        slot = TimeSlot(
-            start_time="8:00 am",
-            end_time="9:00 am",
-            status="Available"
-        )
+        slot = TimeSlot(start_time="8:00 am", end_time="9:00 am", status="Available")
         self.assertEqual(slot.start_time, "8:00 am")
         self.assertEqual(slot.end_time, "9:00 am")
         self.assertEqual(slot.status, "Available")
@@ -23,7 +23,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         """Test Court dataclass creation with time slots."""
         time_slots = [
             TimeSlot("8:00 am", "9:00 am", "Available"),
-            TimeSlot("9:00 am", "10:00 am", "Unavailable")
+            TimeSlot("9:00 am", "10:00 am", "Unavailable"),
         ]
 
         court = Court(
@@ -34,7 +34,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             availability_status="Available",
             date="07/11/2025",
             time_slots=time_slots,
-            price="$10.00"
+            price="$10.00",
         )
 
         self.assertEqual(court.name, "Test Court")
@@ -50,7 +50,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             capacity="3",
             availability_status="No Schedule",
             date="07/11/2025",
-            time_slots=[]
+            time_slots=[],
         )
 
         self.assertEqual(court.time_slot, "No time slots")
@@ -59,7 +59,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         """Test time_slot property when all slots are unavailable."""
         time_slots = [
             TimeSlot("8:00 am", "9:00 am", "Unavailable"),
-            TimeSlot("9:00 am", "10:00 am", "Unavailable")
+            TimeSlot("9:00 am", "10:00 am", "Unavailable"),
         ]
 
         court = Court(
@@ -69,7 +69,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             capacity="3",
             availability_status="Fully Booked",
             date="07/11/2025",
-            time_slots=time_slots
+            time_slots=time_slots,
         )
 
         self.assertEqual(court.time_slot, "0/2 available")
@@ -77,7 +77,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
     def test_parse_court_data_no_table(self):
         """Test parsing when no frwebsearch_output_table is found."""
         html = "<html><body><div>No table here</div></body></html>"
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
         self.assertEqual(len(courts), 0)
@@ -91,7 +91,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
         self.assertEqual(len(courts), 0)
@@ -119,7 +119,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -151,7 +151,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -168,8 +168,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             <td class="label-cell" data-title="Facility Description">Test Court</td>
         </tr>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
         self.assertEqual(len(time_slots), 0)
@@ -186,8 +186,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
         self.assertEqual(len(time_slots), 0)
@@ -216,8 +216,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
 
@@ -250,8 +250,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
 
@@ -289,8 +289,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
 
@@ -323,7 +323,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -363,7 +363,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -388,7 +388,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
         self.assertEqual(len(courts), 0)  # Should skip rows with insufficient cells
@@ -429,7 +429,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -439,7 +439,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         self.assertEqual(courts[1].name, "Pickleball Court 1")
         self.assertEqual(courts[1].sport_type, "Pickleball")
 
-    @patch('html_extractor.logger')
+    @patch("doral_courts.core.html_extractor.logger")
     def test_logging_behavior(self, mock_logger):
         """Test that appropriate logging messages are generated."""
         html = """
@@ -458,7 +458,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -468,8 +468,12 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
 
         # Check for specific log messages
         debug_calls = [call[0][0] for call in mock_logger.debug.call_args_list]
-        self.assertTrue(any("Starting court data parsing" in call for call in debug_calls))
-        self.assertTrue(any("frwebsearch_output_tables" in call for call in debug_calls))
+        self.assertTrue(
+            any("Starting court data parsing" in call for call in debug_calls)
+        )
+        self.assertTrue(
+            any("frwebsearch_output_tables" in call for call in debug_calls)
+        )
 
     def test_extract_time_slots_malformed_time_range(self):
         """Test parsing time slots with malformed time range."""
@@ -486,8 +490,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
 
@@ -514,8 +518,8 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </tr>
         </tbody>
         """
-        soup = BeautifulSoup(html, 'html.parser')
-        row = soup.find('tr')
+        soup = BeautifulSoup(html, "html.parser")
+        row = soup.find("tr")
 
         time_slots = self.extractor._extract_time_slots(row)
 
@@ -540,7 +544,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -548,7 +552,9 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         court = courts[0]
         self.assertEqual(court.name, "Minimal Court")
         self.assertEqual(court.location, "Unknown Location")  # Default value
-        self.assertEqual(court.sport_type, "Pickleball")  # Default when no tennis indicator
+        self.assertEqual(
+            court.sport_type, "Pickleball"
+        )  # Default when no tennis indicator
         self.assertIsNone(court.price)  # Should be None when missing
 
     def test_sport_type_detection_from_name(self):
@@ -569,7 +575,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -595,7 +601,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         courts = self.extractor.parse_court_data(soup)
 
@@ -603,7 +609,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         court = courts[0]
         self.assertEqual(court.date, "07/12/2025")  # Should use text content
 
-    @patch('html_extractor.logger')
+    @patch("doral_courts.core.html_extractor.logger")
     def test_error_handling_in_court_parsing(self, mock_logger):
         """Test error handling when court parsing fails."""
         # Create a malformed HTML that will cause an exception
@@ -623,10 +629,12 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
             </table>
         </body></html>
         """
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, "html.parser")
 
         # Mock an exception in the parsing process
-        with patch.object(self.extractor, '_extract_time_slots', side_effect=Exception("Test error")):
+        with patch.object(
+            self.extractor, "_extract_time_slots", side_effect=Exception("Test error")
+        ):
             courts = self.extractor.parse_court_data(soup)
 
         # Should handle the error gracefully and continue
@@ -634,5 +642,5 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         mock_logger.warning.assert_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

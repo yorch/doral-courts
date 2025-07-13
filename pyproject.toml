@@ -5,6 +5,19 @@ description = "CLI app for showing Doral Tennis and Pickleball Courts availabili
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.13"
+authors = [
+    {name = "Jorge Barnaby", email = "jorge.barnaby@gmail.com"}
+]
+keywords = ["tennis", "pickleball", "courts", "doral", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Utilities",
+]
 dependencies = [
     "requests>=2.32.0",
     "beautifulsoup4>=4.13.0",
@@ -13,10 +26,45 @@ dependencies = [
     "cloudscraper>=1.2.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/yorch/doral-courts"
+Repository = "https://github.com/yorch/doral-courts"
+Issues = "https://github.com/yorch/doral-courts/issues"
+Documentation = "https://github.com/yorch/doral-courts/docs"
+
 [project.scripts]
-doral-courts = "main:cli"
+doral-courts = "doral_courts.cli:cli"
 
 [dependency-groups]
 dev = [
     "pytest>=8.4.1",
+    "ruff>=0.1.0",
+    "mypy>=1.8.0",
+    "black>=23.0.0",
+    "pre-commit>=3.0.0",
 ]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+select = ["E", "W", "F", "I", "N", "B", "A", "S", "T", "ANN"]
+ignore = ["ANN101", "ANN102"]
+
+[tool.ruff.per-file-ignores]
+"tests/*" = ["S101"]  # Allow assert in tests
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]

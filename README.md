@@ -36,19 +36,19 @@ pip install -r requirements.txt
 
 ```bash
 # List all available courts for today
-uv run python main.py list
+uv run doral-courts list
 
 # Show available time slots for tomorrow
-uv run python main.py list-available-slots --date tomorrow
+uv run doral-courts list-available-slots --date tomorrow
 
 # List all court names
-uv run python main.py list-courts
+uv run doral-courts list-courts
 
 # Show locations with court counts
-uv run python main.py list-locations
+uv run doral-courts list-locations
 
 # Watch for real-time updates
-uv run python main.py watch --interval 300
+uv run doral-courts watch --interval 300
 ```
 
 ## 📚 Documentation
@@ -88,16 +88,16 @@ The CLI supports flexible date input:
 
 ```bash
 # Tennis courts for next week
-uv run python main.py list --sport tennis --date +7
+uv run doral-courts list --sport tennis --date +7
 
 # Pickleball courts at specific location
-uv run python main.py list --sport pickleball --location "Doral Central Park"
+uv run doral-courts list --sport pickleball --location "Doral Central Park"
 
 # Available slots for tomorrow with data export
-uv run python main.py list-available-slots --date tomorrow --save-data
+uv run doral-courts list-available-slots --date tomorrow --save-data
 
 # Watch tennis courts every 5 minutes
-uv run python main.py watch --sport tennis --interval 300
+uv run doral-courts watch --sport tennis --interval 300
 ```
 
 ## 🗄️ Data Storage
@@ -112,26 +112,26 @@ uv run python main.py watch --sport tennis --interval 300
 
 ```bash
 # Run all tests
-uv run python -m pytest test_html_extractor.py -v
+uv run pytest -v
 
 # Run with coverage
-uv run python -m pytest --cov=. test_html_extractor.py
+uv run pytest --cov=src
 ```
 
 ### Project Structure
 
 ```
 doral-courts/
-├── main.py              # CLI entry point
-├── scraper.py           # Web scraping logic
-├── html_extractor.py    # HTML parsing and data extraction
-├── database.py          # SQLite database operations
-├── utils.py             # Display and utility functions
-├── logger.py            # Logging configuration
-├── test_html_extractor.py # Unit tests
-├── pyproject.toml       # Project configuration
+├── src/
+│   └── doral_courts/    # Main package
+│       ├── cli/         # CLI commands and entry point
+│       ├── core/        # Core business logic (scraper, database, html_extractor)
+│       ├── display/     # UI formatting and display utilities
+│       └── utils/       # Utility functions (logging, dates, files)
+├── tests/               # Test suite
+├── docs/                # Documentation
 ├── data/                # Exported data files
-└── docs/                # Documentation
+└── pyproject.toml       # Project configuration and dependencies
 ```
 
 ## 📝 License

@@ -12,7 +12,7 @@ By contributing to this project, you agree that your contributions will be licen
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Add tests for your changes
-5. Ensure all tests pass (`uv run python -m pytest test_html_extractor.py -v`)
+5. Ensure all tests pass (`uv run pytest -v`)
 6. Commit your changes (`git commit -m 'Add some amazing feature'`)
 7. Push to the branch (`git push origin feature/amazing-feature`)
 8. Open a Pull Request
@@ -27,7 +27,13 @@ git clone https://github.com/yorch/doral-courts.git
 uv sync
 
 # Run tests
-uv run python -m pytest test_html_extractor.py -v
+uv run pytest -v
+
+# Run with coverage
+uv run pytest --cov=src
+
+# Run code quality checks
+uv run ruff check src/
 ```
 
 ## Code Style
