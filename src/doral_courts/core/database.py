@@ -38,7 +38,7 @@ class Database:
         Initialize database connection and setup schema.
 
         Args:
-            db_path: Path to SQLite database file (default: ~/.doral-courts/doral_courts.db)
+            db_path: Path to SQLite database file (default: ~/.doral-courts/data.db)
 
         Creates database file if it doesn't exist and sets up required tables
         and indexes. Performs any necessary schema migrations.
@@ -47,7 +47,7 @@ class Database:
             self.db_path = db_path
         else:
             # Use config directory for database storage
-            self.db_path = str(get_config_dir() / "doral_courts.db")
+            self.db_path = str(get_config_dir() / "data.db")
 
         logger.debug("Initializing database at path: %s", self.db_path)
         self.init_database()
