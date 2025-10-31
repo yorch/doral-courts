@@ -5,11 +5,13 @@ import click
 from ..utils.logger import setup_logging
 from .commands.cleanup_cmd import cleanup
 from .commands.data_cmd import data
+from .commands.favorites_cmd import favorites
 from .commands.history_cmd import history
 from .commands.list_available_slots_cmd import list_available_slots
 from .commands.list_cmd import list_courts
 from .commands.list_courts_cmd import list_courts as list_courts_names
 from .commands.list_locations_cmd import list_locations
+from .commands.query_cmd import query
 from .commands.slots_cmd import slots
 from .commands.stats_cmd import stats
 from .commands.watch_cmd import watch
@@ -61,6 +63,8 @@ cli.add_command(watch)
 cli.add_command(list_available_slots)
 cli.add_command(list_courts_names)
 cli.add_command(list_locations)
+cli.add_command(favorites)
+cli.add_command(query)
 
 
 if __name__ == "__main__":

@@ -12,6 +12,8 @@ The Doral Courts CLI is a Python application that scrapes court availability dat
 - **Multiple Sports**: Supports both tennis and pickleball courts
 - **Flexible Date Handling**: Use relative dates like "today", "tomorrow", "+3", "-2"
 - **Rich CLI Interface**: Beautiful tables and colored output using Rich library
+- **Favorite Courts**: Save and filter your frequently used courts with quick access
+- **Saved Queries**: Store commonly used search filters for instant access
 - **Historical Data**: Local SQLite database for tracking court availability over time
 - **Data Export**: Save HTML and JSON data for analysis
 - **Watch Mode**: Monitor court availability with real-time updates
@@ -71,6 +73,8 @@ For detailed documentation, see the [docs](./docs/) directory:
 | `list-available-slots` | Show available time slots by court          |
 | `slots`                | Detailed time slot availability             |
 | `data`                 | Comprehensive scraped data view             |
+| `favorites`            | Manage favorite courts (add/remove/list)    |
+| `query`                | Run saved queries by name                   |
 | `history`              | View historical court data                  |
 | `watch`                | Monitor availability with real-time updates |
 | `stats`                | Database statistics                         |
@@ -98,13 +102,57 @@ uv run doral-courts list-available-slots --date tomorrow --save-data
 
 # Watch tennis courts every 5 minutes
 uv run doral-courts watch --sport tennis --interval 300
+
+# Manage favorite courts
+uv run doral-courts favorites add "DLP Tennis Court 1"
+uv run doral-courts favorites list
+uv run doral-courts list --favorites  # Show only favorite courts
+
+# Run a saved query
+uv run doral-courts query my_tennis
 ```
 
 ## 🗄️ Data Storage
 
 - **Local Database**: SQLite database (`doral_courts.db`) stores historical data
 - **Data Export**: HTML and JSON files saved to `data/` directory when using `--save-data`
+- **Configuration**: User settings stored in `~/.doral-courts/config.yaml`
 - **Logging**: Configurable logging with `--verbose` flag
+
+## ⚙️ Configuration
+
+The CLI stores user preferences in `~/.doral-courts/config.yaml`. This file is automatically created on first use.
+
+**Favorite Courts**:
+
+```yaml
+favorites:
+  courts:
+    - DLP Tennis Court 1
+    - DCP Tennis Court 1
+```
+
+**Saved Queries**:
+
+```yaml
+queries:
+  my_tennis:
+    sport: tennis
+    date: tomorrow
+    status: available
+  weekend_pickleball:
+    sport: pickleball
+    date: "+2"
+    location: "Doral Central Park"
+```
+
+**Defaults**:
+
+```yaml
+defaults:
+  sport: null        # Default sport filter
+  date_offset: 0     # Default date offset (0 = today)
+```
 
 ## 🛠️ Development
 

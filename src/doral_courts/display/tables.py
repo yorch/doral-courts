@@ -1,6 +1,6 @@
 """Table display utilities for courts data."""
 
-from typing import List
+from typing import List, Optional, Set
 
 from rich.console import Console
 from rich.table import Table
@@ -10,19 +10,23 @@ from ..core.html_extractor import Court
 console = Console()
 
 
-def display_courts_table(courts: List[Court]):
+def display_courts_table(
+    courts: List[Court], favorite_court_names: Optional[Set[str]] = None
+):
     """
     Display courts in a formatted Rich table.
 
     Creates and displays a comprehensive table showing court information
     including availability, time slots, and other details. Uses Rich library
-    for colored output and proper formatting.
+    for colored output and proper formatting. Highlights favorite courts with
+    a star emoji.
 
     Args:
         courts: List of Court objects to display
+        favorite_court_names: Optional set of favorite court names to highlight
 
     Table Columns:
-        - Court Name: Name of the court (cyan, no-wrap)
+        - Court Name: Name of the court (cyan, no-wrap) with ⭐ for favorites
         - Sport: Tennis or Pickleball (magenta)
         - Date: Date being displayed (green)
         - Time Slots: Available/total count (yellow)
@@ -38,6 +42,11 @@ def display_courts_table(courts: List[Court]):
     Example:
         courts = scraper.fetch_courts()
         display_courts_table(courts)
+
+        # With favorites
+        config = Config()
+        favorites = set(config.get_favorites())
+        display_courts_table(courts, favorites)
     """
     table = Table(title="Doral Courts Availability")
 
@@ -68,8 +77,13 @@ def display_courts_table(courts: List[Court]):
         else:
             time_display = "No slots"
 
+        # Highlight favorite courts with star
+        court_name_display = court.name
+        if favorite_court_names and court.name in favorite_court_names:
+            court_name_display = f"⭐ {court.name}"
+
         table.add_row(
-            court.name,
+            court_name_display,
             court.sport_type,
             court.date,
             time_display,

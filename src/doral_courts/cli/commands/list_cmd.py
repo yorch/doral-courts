@@ -9,6 +9,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from ...core.database import Database
 from ...core.scraper import Scraper
 from ...display.tables import display_courts_table
+from ...utils.config import Config
 from ...utils.date_utils import parse_date_input
 from ...utils.file_utils import save_html_data, save_json_data
 from ...utils.logger import get_logger
@@ -32,8 +33,19 @@ console = Console()
     "--date",
     help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
 )
+@click.option(
+    "--favorites",
+    is_flag=True,
+    help="Show only favorite courts",
+)
 @click.pass_context
-def list_courts(ctx, sport: Optional[str], status: Optional[str], date: Optional[str]):
+def list_courts(
+    ctx,
+    sport: Optional[str],
+    status: Optional[str],
+    date: Optional[str],
+    favorites: bool,
+):
     """
     List available courts with optional filters. Always fetches fresh data from website.
 
@@ -160,12 +172,31 @@ def list_courts(ctx, sport: Optional[str], status: Optional[str], date: Optional
         ]
         logger.debug(f"Applied status filter '{status}': {len(filtered_courts)} courts")
 
+    if favorites:
+        config = Config()
+        favorite_court_names = config.get_favorites()
+        if not favorite_court_names:
+            console.print("[yellow]No favorite courts configured.[/yellow]")
+            console.print(
+                "[blue]Add favorites with: doral-courts favorites add <court_name>[/blue]"
+            )
+            return
+
+        filtered_courts = [
+            court for court in filtered_courts if court.name in favorite_court_names
+        ]
+        logger.debug(
+            f"Applied favorites filter: {len(filtered_courts)} courts in favorites"
+        )
+
     logger.info(f"Found {len(filtered_courts)} courts matching criteria")
 
     if not filtered_courts:
         console.print("[red]No courts found matching your criteria.[/red]")
         return
 
-    # Display courts in a table
+    # Display courts in a table with favorite highlighting
     logger.debug("Displaying courts table")
-    display_courts_table(filtered_courts)
+    config = Config()
+    favorite_court_names = set(config.get_favorites())
+    display_courts_table(filtered_courts, favorite_court_names)
