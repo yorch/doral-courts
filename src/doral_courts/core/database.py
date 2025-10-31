@@ -2,6 +2,7 @@ import sqlite3
 from datetime import datetime
 from typing import List, Optional
 
+from ..utils.config import get_config_dir
 from ..utils.logger import get_logger
 from .html_extractor import Court, TimeSlot
 
@@ -32,18 +33,23 @@ class Database:
         historical_courts = db.get_courts(sport_type="Tennis")
     """
 
-    def __init__(self, db_path: str = "doral_courts.db"):
+    def __init__(self, db_path: Optional[str] = None):
         """
         Initialize database connection and setup schema.
 
         Args:
-            db_path: Path to SQLite database file (default: "doral_courts.db")
+            db_path: Path to SQLite database file (default: ~/.doral-courts/data.db)
 
         Creates database file if it doesn't exist and sets up required tables
         and indexes. Performs any necessary schema migrations.
         """
-        self.db_path = db_path
-        logger.debug("Initializing database at path: %s", db_path)
+        if db_path:
+            self.db_path = db_path
+        else:
+            # Use config directory for database storage
+            self.db_path = str(get_config_dir() / "data.db")
+
+        logger.debug("Initializing database at path: %s", self.db_path)
         self.init_database()
 
     def init_database(self):
