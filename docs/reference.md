@@ -1,4 +1,4 @@
-# Doral Courts CLI - Complete Feature Documentation
+# Doral Courts CLI - Technical Reference
 
 **Version**: 0.1.0
 **Last Updated**: 2025-10-31
@@ -1074,7 +1074,7 @@ uv run pytest tests/unit/test_html_extractor.py -v
 
 ## Future Roadmap
 
-See `FEATURE_IMPROVEMENTS.md` for detailed proposals on:
+See [`feature-improvements.md`](./feature-improvements.md) for detailed proposals on:
 
 - Notifications and alerts
 - Advanced analytics

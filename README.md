@@ -57,6 +57,8 @@ uv run doral-courts watch --interval 300
 
 For detailed documentation, see the [docs](./docs/) directory:
 
+- **[Reference](./docs/reference.md)** - Complete feature documentation and technical reference
+- **[Feature Improvements](./docs/feature-improvements.md)** - Roadmap and planned enhancements
 - **[Installation Guide](./docs/installation.md)** - Detailed setup instructions
 - **[Command Reference](./docs/commands.md)** - Complete CLI command documentation
 - **[Examples](./docs/examples.md)** - Common usage patterns and examples

@@ -15,7 +15,7 @@ This document proposes strategic feature improvements prioritized by value, feas
   - Added `query` command for saved query execution
   - Enhanced `list` command with `--favorites` flag
   - Star emoji (⭐) highlighting in all tables
-  - Full documentation in README.md and FEATURES.md
+  - Full documentation in README.md and reference.md
 
 ---
 
@@ -222,7 +222,7 @@ doral-courts query weekend_pickleball
 - Enhanced `src/doral_courts/cli/commands/list_cmd.py` - Added `--favorites` flag
 - Enhanced `src/doral_courts/display/tables.py` - Star emoji (⭐) highlighting for favorites
 - Configuration stored at `~/.doral-courts/config.yaml`
-- Full documentation in README.md and FEATURES.md
+- Full documentation in README.md and reference.md
 
 ---
 
