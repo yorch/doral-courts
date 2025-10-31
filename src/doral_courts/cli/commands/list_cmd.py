@@ -102,10 +102,10 @@ def list_courts(ctx, sport: Optional[str], status: Optional[str], date: Optional
         save_data = ctx.obj.get("save_data", False)
         if save_data:
             courts, html_content = scraper.fetch_courts_with_html(
-                date=date, sport_filter=sport
+                date=parsed_date, sport_filter=sport
             )
         else:
-            courts = scraper.fetch_courts(date=date, sport_filter=sport)
+            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
             html_content = ""
 
         if courts:
