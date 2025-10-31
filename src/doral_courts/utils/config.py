@@ -11,6 +11,20 @@ from .logger import get_logger
 logger = get_logger(__name__)
 
 
+def get_config_dir() -> Path:
+    """
+    Get the configuration directory path for Doral Courts.
+
+    Returns:
+        Path to the config directory (~/.doral-courts)
+
+    The directory is created if it doesn't exist.
+    """
+    config_dir = Path.home() / ".doral-courts"
+    config_dir.mkdir(parents=True, exist_ok=True)
+    return config_dir
+
+
 class Config:
     """
     Manage user configuration for Doral Courts CLI.
@@ -42,19 +56,14 @@ class Config:
         if config_path:
             self.config_path = Path(config_path)
         else:
-            self.config_dir = Path.home() / ".doral-courts"
+            self.config_dir = get_config_dir()
             self.config_path = self.config_dir / "config.yaml"
 
         logger.debug(f"Config path: {self.config_path}")
         self._ensure_config_exists()
 
     def _ensure_config_exists(self) -> None:
-        """Create config directory and file with defaults if they don't exist."""
-        # Create directory if needed
-        if not self.config_path.parent.exists():
-            logger.info(f"Creating config directory: {self.config_path.parent}")
-            self.config_path.parent.mkdir(parents=True, exist_ok=True)
-
+        """Create config file with defaults if it doesn't exist."""
         # Create default config file if needed
         if not self.config_path.exists():
             logger.info(f"Creating default config file: {self.config_path}")

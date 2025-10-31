@@ -1,8 +1,8 @@
 import sqlite3
 from datetime import datetime
-from pathlib import Path
 from typing import List, Optional
 
+from ..utils.config import get_config_dir
 from ..utils.logger import get_logger
 from .html_extractor import Court, TimeSlot
 
@@ -47,9 +47,7 @@ class Database:
             self.db_path = db_path
         else:
             # Use config directory for database storage
-            config_dir = Path.home() / ".doral-courts"
-            config_dir.mkdir(parents=True, exist_ok=True)
-            self.db_path = str(config_dir / "doral_courts.db")
+            self.db_path = str(get_config_dir() / "doral_courts.db")
 
         logger.debug("Initializing database at path: %s", self.db_path)
         self.init_database()
