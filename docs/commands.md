@@ -1,431 +1,158 @@
-# Command Reference
+# Command Quick Reference
 
-Complete reference for all Doral Courts CLI commands.
+Quick lookup for Doral Courts CLI commands. For comprehensive documentation with examples and detailed options, see the [Reference Guide](./reference.md#command-reference).
 
 ## Global Options
 
-These options are available for all commands:
+Available for all commands:
 
-- `--verbose, -v`: Enable verbose logging
-- `--save-data`: Save retrieved HTML and JSON data to files
-- `--help`: Show help message
+- `--verbose, -v` - Enable verbose logging
+- `--save-data` - Save retrieved HTML/JSON data to files
+- `--version` - Show version and exit
+- `--help` - Show help message
 
-## Commands Overview
+## Core Commands
 
-### Core Commands
+### Court Listing
 
-- [`list`](#list) - List available courts with filters
-- [`list-courts`](#list-courts) - Show all court names
-- [`list-locations`](#list-locations) - Show all locations
-- [`list-available-slots`](#list-available-slots) - Show available time slots
+```bash
+# List all courts with filters
+doral-courts list [--sport tennis|pickleball] [--status available|booked] [--date DATE] [--favorites]
 
-### Data Commands
+# Show all court names
+doral-courts list-courts [--sport tennis|pickleball]
 
-- [`slots`](#slots) - Detailed time slot availability
-- [`data`](#data) - Comprehensive scraped data view
-- [`history`](#history) - View historical court data
+# Show all locations with court counts
+doral-courts list-locations [--sport tennis|pickleball]
 
-### Utility Commands
+# Show available time slots by court
+doral-courts list-available-slots [--sport tennis|pickleball] [--date DATE]
+```
 
-- [`watch`](#watch) - Monitor with real-time updates
-- [`stats`](#stats) - Database statistics
-- [`cleanup`](#cleanup) - Clean up old data
+📖 [Detailed documentation →](./reference.md#1-list---primary-court-listing)
+
+### Data Analysis
+
+```bash
+# Detailed time slot availability
+doral-courts slots --court "Court Name" [--date DATE] [--available-only]
+
+# Comprehensive scraped data view
+doral-courts data [--mode summary|detailed|raw] [--sport tennis|pickleball] [--date DATE]
+
+# View historical court data (cached)
+doral-courts history [--sport tennis|pickleball] [--date DATE] [--days N]
+```
+
+📖 [Detailed documentation →](./reference.md#2-slots---detailed-time-slot-view)
+
+### Monitoring & Analytics
+
+```bash
+# Continuous background polling
+doral-courts monitor [--interval N] [--sport tennis|pickleball] [--location "Location"] [--days-ahead N] [--quiet]
+
+# Booking velocity and pattern analysis
+doral-courts analyze [--sport tennis|pickleball] [--location "Location"] [--court "Court"] [--time-slot "8:00 am"] [--day-of-week Friday] [--days N] [--mode velocity|availability|summary]
+
+# Real-time monitoring with updates
+doral-courts watch [--interval N] [--sport tennis|pickleball]
+```
+
+📖 [Monitoring Guide →](./monitoring-guide.md) | [Command reference →](./reference.md#13-monitor---continuous-background-polling)
+
+### Favorites & Queries
+
+```bash
+# Manage favorite courts
+doral-courts favorites add "Court Name"
+doral-courts favorites remove "Court Name"
+doral-courts favorites list
+
+# Run saved queries
+doral-courts query list
+doral-courts query run "query-name"
+doral-courts query save "query-name" --sport tennis --date tomorrow
+doral-courts query delete "query-name"
+```
+
+📖 [Detailed documentation →](./reference.md#11-favorites---favorite-courts-management)
+
+### Database Management
+
+```bash
+# Show database statistics
+doral-courts stats
+
+# Clean up old data
+doral-courts cleanup [--days N]
+```
+
+📖 [Detailed documentation →](./reference.md#9-stats---database-statistics)
+
+## Common Usage Patterns
+
+### Quick Checks
+
+```bash
+# What's available right now?
+doral-courts list
+
+# Tennis courts tomorrow
+doral-courts list --sport tennis --date tomorrow
+
+# Pickleball at specific location
+doral-courts list --sport pickleball --location "Doral Legacy Park"
+```
+
+### Planning Ahead
+
+```bash
+# Check weekend availability (Saturday)
+doral-courts list --date +6
+
+# Monitor Friday morning slots
+doral-courts monitor --sport pickleball --interval 5 --days-ahead 2 --quiet
+```
+
+### Analysis
+
+```bash
+# How fast do courts get booked?
+doral-courts analyze --sport pickleball --day-of-week Friday --time-slot "8:00 am" --mode velocity
+
+# Best day to find courts
+doral-courts analyze --sport tennis --mode availability
+```
+
+## Date Format Options
+
+- **Relative**: `today`, `tomorrow`, `yesterday`
+- **Offset**: `+3` (3 days ahead), `-2` (2 days ago)
+- **Absolute**: `07/15/2025`, `2025-07-15`
+
+📖 [Date formats guide →](./date-formats.md)
+
+## Getting Help
+
+```bash
+# Command-specific help
+doral-courts list --help
+doral-courts monitor --help
+doral-courts analyze --help
+
+# General help
+doral-courts --help
+```
+
+## Documentation Index
+
+- 📚 **[Reference Guide](./reference.md)** - Comprehensive command documentation with all options and examples
+- 🎯 **[Usage Examples](./examples.md)** - Real-world use cases and workflows
+- 📊 **[Monitoring Guide](./monitoring-guide.md)** - Continuous monitoring and booking analytics
+- 📦 **[Installation Guide](./installation.md)** - Setup and configuration
+- 🛠️ **[Development Guide](./development.md)** - Contributing and architecture
 
 ---
 
-## `list`
-
-List available courts with optional filters. Always fetches fresh data from website.
-
-### Syntax
-
-```bash
-uv run doral-courts list [OPTIONS]
-```
-
-### Options
-
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--status [available|booked|maintenance]`: Filter by availability status
-- `--date TEXT`: Date to check (default: today)
-
-### Examples
-
-```bash
-# List all courts for today
-uv run doral-courts list
-
-# List tennis courts for tomorrow
-uv run doral-courts list --sport tennis --date tomorrow
-
-# List available courts for next week
-uv run doral-courts list --status available --date +7
-
-# Save data while listing
-uv run doral-courts list --save-data --verbose
-```
-
-### Output
-
-Displays a table with:
-
-- Court Name
-- Sport Type
-- Date
-- Time Slots (available/total)
-- Status
-- Capacity
-- Price
-
----
-
-## `list-courts`
-
-List all available court names.
-
-### Syntax
-
-```bash
-uv run doral-courts list-courts [OPTIONS]
-```
-
-### Options
-
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--date TEXT`: Date to check (default: today)
-
-### Examples
-
-```bash
-# List all court names
-uv run doral-courts list-courts
-
-# List only tennis court names
-uv run doral-courts list-courts --sport tennis
-
-# List court names for specific date
-uv run doral-courts list-courts --date 07/15/2025
-```
-
-### Output
-
-Displays a numbered table of unique court names, optionally filtered by sport.
-
----
-
-## `list-locations`
-
-List all available locations with court counts.
-
-### Syntax
-
-```bash
-uv run doral-courts list-locations [OPTIONS]
-```
-
-### Options
-
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--date TEXT`: Date to check (default: today)
-
-### Examples
-
-```bash
-# List all locations
-uv run doral-courts list-locations
-
-# List locations with pickleball courts
-uv run doral-courts list-locations --sport pickleball
-
-# List locations for tomorrow
-uv run doral-courts list-locations --date tomorrow
-```
-
-### Output
-
-Displays a table with:
-
-- Location name
-- Number of courts at that location
-
----
-
-## `list-available-slots`
-
-List all available time slots by court for a specific date.
-
-### Syntax
-
-```bash
-uv run doral-courts list-available-slots [OPTIONS]
-```
-
-### Options
-
-- `--date TEXT`: Date to check (default: today)
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--location TEXT`: Filter by location
-
-### Examples
-
-```bash
-# Show available slots for today
-uv run doral-courts list-available-slots
-
-# Show tennis slots for tomorrow
-uv run doral-courts list-available-slots --date tomorrow --sport tennis
-
-# Show slots at specific location
-uv run doral-courts list-available-slots --location "Doral Central Park"
-```
-
-### Output
-
-Displays:
-
-- Summary statistics (total slots, courts, breakdown by sport/location)
-- Detailed table grouped by time slots showing:
-  - Time range
-  - Court name
-  - Sport type
-  - Location
-  - Capacity
-  - Price
-
----
-
-## `slots`
-
-Show detailed time slot availability for courts. Always fetches fresh data.
-
-### Syntax
-
-```bash
-uv run doral-courts slots [OPTIONS]
-```
-
-### Options
-
-- `--court TEXT`: Show detailed time slots for a specific court
-- `--date TEXT`: Date to check (default: today)
-- `--available-only`: Show only available time slots
-
-### Examples
-
-```bash
-# Show all time slots for today
-uv run doral-courts slots
-
-# Show slots for specific court
-uv run doral-courts slots --court "DCP Tennis Court 1"
-
-# Show only available slots for tomorrow
-uv run doral-courts slots --date tomorrow --available-only
-```
-
-### Output
-
-For each court, displays a table with:
-
-- Start Time
-- End Time
-- Status (Available/Unavailable)
-
----
-
-## `data`
-
-Display comprehensive view of all scraped data from the website. Always fetches fresh data.
-
-### Syntax
-
-```bash
-uv run doral-courts data [OPTIONS]
-```
-
-### Options
-
-- `--mode [detailed|summary]`: Display mode (default: detailed)
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--date TEXT`: Date to check (default: today)
-
-### Examples
-
-```bash
-# Show detailed data view
-uv run doral-courts data
-
-# Show summary of time slots
-uv run doral-courts data --mode summary
-
-# Show tennis data for specific date
-uv run doral-courts data --sport tennis --date +3
-```
-
-### Output
-
-**Detailed mode**: Complete information for each court including all fields and sample time slots
-
-**Summary mode**: Analysis of time slots across all courts with statistics and popular time ranges
-
----
-
-## `history`
-
-View historical court data from database (cached data).
-
-### Syntax
-
-```bash
-uv run doral-courts history [OPTIONS]
-```
-
-### Options
-
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--status [available|booked|maintenance]`: Filter by availability status
-- `--date TEXT`: Date to check (default: today)
-- `--mode [table|detailed|summary]`: Display mode (default: table)
-
-### Examples
-
-```bash
-# Show historical data in table format
-uv run doral-courts history
-
-# Show detailed historical data for tennis
-uv run doral-courts history --sport tennis --mode detailed
-
-# Show summary for specific date
-uv run doral-courts history --date yesterday --mode summary
-```
-
-### Output
-
-Depends on mode:
-
-- **table**: Simple court table
-- **detailed**: Complete court information
-- **summary**: Time slot analysis
-
----
-
-## `watch`
-
-Monitor court availability with real-time updates.
-
-### Syntax
-
-```bash
-uv run doral-courts watch [OPTIONS]
-```
-
-### Options
-
-- `--interval INTEGER`: Update interval in seconds (default: 300)
-- `--sport [tennis|pickleball]`: Filter by sport type
-- `--date TEXT`: Date to monitor (default: today)
-
-### Examples
-
-```bash
-# Watch all courts, update every 5 minutes
-uv run doral-courts watch
-
-# Watch tennis courts, update every 2 minutes
-uv run doral-courts watch --sport tennis --interval 120
-
-# Watch courts for tomorrow
-uv run doral-courts watch --date tomorrow
-```
-
-### Behavior
-
-- Clears screen and shows updated data at each interval
-- Press Ctrl+C to stop monitoring
-- Shows last updated timestamp
-- Saves data if `--save-data` flag is used
-
----
-
-## `stats`
-
-Show database statistics.
-
-### Syntax
-
-```bash
-uv run doral-courts stats
-```
-
-### Output
-
-Displays:
-
-- Total courts in database
-- Last updated timestamp
-- Sport breakdown (tennis vs pickleball)
-- Availability status breakdown
-
----
-
-## `cleanup`
-
-Clean up old court data.
-
-### Syntax
-
-```bash
-uv run doral-courts cleanup [OPTIONS]
-```
-
-### Options
-
-- `--days INTEGER`: Remove data older than N days (default: 7)
-
-### Examples
-
-```bash
-# Remove data older than 7 days
-uv run doral-courts cleanup
-
-# Remove data older than 30 days
-uv run doral-courts cleanup --days 30
-```
-
-### Output
-
-Shows number of records removed from database.
-
----
-
-## Common Patterns
-
-### Combining Options
-
-```bash
-# Detailed tennis data with verbose logging and data export
-uv run doral-courts data --sport tennis --mode detailed --verbose --save-data
-
-# Watch pickleball courts at specific location
-uv run doral-courts watch --sport pickleball --date tomorrow --interval 180
-```
-
-### Using with Shell Scripts
-
-```bash
-#!/bin/bash
-# Check if tennis courts are available for tomorrow
-uv run doral-courts list-available-slots --sport tennis --date tomorrow > tennis_slots.txt
-```
-
-### Error Handling
-
-Most commands will show helpful error messages for:
-
-- Invalid date formats
-- Network connection issues
-- Missing or invalid options
-- Database errors
-
-Use `--verbose` flag for detailed error information and debugging.
+**Need more details?** See the [Reference Guide](./reference.md) for comprehensive documentation of all commands with full option lists, output formats, and detailed examples.

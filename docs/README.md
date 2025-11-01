@@ -4,100 +4,107 @@ Welcome to the Doral Courts CLI documentation!
 
 ## 📖 Documentation Overview
 
-This directory contains comprehensive documentation for the Doral Courts CLI application.
+Comprehensive documentation for the Doral Courts CLI application.
 
 ### Getting Started
 
-1. **[Installation Guide](./installation.md)** - Setup instructions and requirements
+1. **[Installation Guide](./installation.md)** - Setup, requirements, and PostgreSQL configuration
 2. **[Examples](./examples.md)** - Practical usage examples and common scenarios
+3. **[Command Quick Reference](./commands.md)** - Quick command syntax lookup
 
-### Reference
+### Core Documentation
 
-3. **[Command Reference](./commands.md)** - Complete documentation of all CLI commands
-4. **[Date Formats](./date-formats.md)** - Supported date input formats and examples
+4. **[Reference Guide](./reference.md)** - Comprehensive technical reference for all features and commands
+5. **[Monitoring Guide](./monitoring-guide.md)** 🆕 - Continuous monitoring and booking analytics
+6. **[Date Formats](./date-formats.md)** - Supported date input formats and examples
 
 ### Development
 
-5. **[Development Guide](./development.md)** - Contributing, architecture, and extending the application
+7. **[Development Guide](./development.md)** - Architecture, contributing, and extending the application
+8. **[Feature Roadmap](./feature-improvements.md)** - Planned enhancements and improvements
 
 ## 🚀 Quick Navigation
 
 ### New Users
 
-- Start with [Installation Guide](./installation.md)
-- Try the [Examples](./examples.md) to see common usage patterns
-- Reference [Date Formats](./date-formats.md) for flexible date input
+Start here → [Installation Guide](./installation.md) → [Examples](./examples.md) → [Commands Quick Reference](./commands.md)
 
 ### Regular Users
 
-- Bookmark [Command Reference](./commands.md) for quick command lookup
-- Check [Examples](./examples.md) for advanced usage patterns
+- 📝 **Quick lookup**: [Command Quick Reference](./commands.md)
+- 🎯 **Use cases**: [Examples](./examples.md)
+- 📊 **Analytics**: [Monitoring Guide](./monitoring-guide.md)
+- 📚 **Full reference**: [Reference Guide](./reference.md)
 
 ### Developers
 
-- Read [Development Guide](./development.md) for architecture and contribution guidelines
-- See [Command Reference](./commands.md) for complete API understanding
+- 🏗️ **Architecture**: [Development Guide](./development.md)
+- 📋 **Roadmap**: [Feature Roadmap](./feature-improvements.md)
+- 📖 **API reference**: [Reference Guide](./reference.md)
 
 ## 💡 Quick Reference
 
 ### Most Common Commands
 
 ```bash
-# List courts for today
-uv run doral-courts list
+# Check what's available now
+doral-courts list
 
-# Show court names
-uv run doral-courts list-courts
+# Tennis courts tomorrow
+doral-courts list --sport tennis --date tomorrow
 
-# Available slots for tomorrow
-uv run doral-courts list-available-slots --date tomorrow
+# Monitor for historical data
+doral-courts monitor --interval 10 --quiet
 
-# Monitor courts in real-time
-uv run doral-courts watch
+# Analyze booking patterns
+doral-courts analyze --sport pickleball --mode velocity
 ```
 
 ### Key Features
 
-- ✅ Flexible date handling (`today`, `tomorrow`, `+7`, `07/15/2025`)
-- ✅ Sport filtering (`--sport tennis`, `--sport pickleball`)
-- ✅ Location filtering (`--location "Doral Central Park"`)
-- ✅ Real-time monitoring (`watch` command)
-- ✅ Historical data (`history` command)
-- ✅ Data export (`--save-data` flag)
+- ✅ **Flexible dates**: `today`, `tomorrow`, `+7`, `2025-07-15`
+- ✅ **Sport filtering**: `--sport tennis|pickleball`
+- ✅ **Location filtering**: `--location "Doral Central Park"`
+- ✅ **Continuous monitoring**: Background polling for analytics
+- ✅ **Booking analytics**: Velocity and availability patterns
+- ✅ **Database options**: SQLite (default) or PostgreSQL
+- ✅ **Favorites & queries**: Save frequently used searches
 
 ## 📝 Documentation Structure
 
 ```
 docs/
-├── README.md           # This index file
-├── installation.md     # Setup and installation
-├── commands.md         # Complete command reference
-├── examples.md         # Usage examples and scenarios
-├── date-formats.md     # Date input format guide
-└── development.md      # Development and contributing guide
+├── README.md              # This index file
+├── installation.md        # Setup and installation
+├── commands.md            # Quick command reference
+├── reference.md           # Comprehensive technical reference
+├── monitoring-guide.md    # Continuous monitoring & analytics
+├── examples.md            # Usage examples and scenarios
+├── date-formats.md        # Date input format guide
+├── development.md         # Development and contributing
+└── feature-improvements.md # Roadmap and planned features
 ```
 
-## 🔗 External Links
+## 🔗 External Resources
 
-- **Main README**: [../README.md](../README.md) - Project overview and quick start
-- **Source Code**: Main application files in parent directory
-- **Tests**: `test_html_extractor.py` - Unit tests for core functionality
+- **[Main README](../README.md)** - Project overview and quick start
+- **[GitHub Repository](https://github.com/yorch/doral-courts)** - Source code and issues
 
-## 🆘 Need Help?
+## 🆘 Getting Help
 
-1. **Installation Issues**: See [Installation Guide](./installation.md#troubleshooting)
-2. **Command Help**: Run any command with `--help` flag
-3. **Date Format Issues**: Check [Date Formats](./date-formats.md#error-handling)
-4. **Development Questions**: See [Development Guide](./development.md)
+1. **Installation issues**: [Installation Guide - Troubleshooting](./installation.md#troubleshooting)
+2. **Command help**: Run any command with `--help` flag
+3. **Monitoring setup**: [Monitoring Guide](./monitoring-guide.md#quick-start)
+4. **Database configuration**: [Monitoring Guide - Database Configuration](./monitoring-guide.md#database-configuration)
+5. **Development questions**: [Development Guide](./development.md)
 
-## 📈 Documentation Updates
+## 🎯 Documentation by Use Case
 
-This documentation is updated with each release. If you find any issues or have suggestions:
+### I want to
 
-1. Check the [Development Guide](./development.md) for contributing guidelines
-2. Ensure you're using the latest version
-3. Create an issue with details about the documentation problem
-
----
-
-*Happy court hunting! 🎾*
+- **...check court availability** → [Examples - Quick Start](./examples.md#quick-start-examples)
+- **...track booking patterns** → [Monitoring Guide](./monitoring-guide.md)
+- **...use PostgreSQL instead of SQLite** → [Monitoring Guide - Database Configuration](./monitoring-guide.md#database-configuration)
+- **...save favorite courts** → [Reference - Favorites](./reference.md#11-favorites---favorite-courts-management)
+- **...understand all commands** → [Reference Guide](./reference.md#command-reference)
+- **...contribute code** → [Development Guide](./development.md)
