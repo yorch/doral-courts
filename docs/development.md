@@ -14,7 +14,8 @@ src/doral_courts/
 ├── core/                  # Core business logic
 │   ├── scraper.py        # Web scraping with Cloudflare bypass
 │   ├── html_extractor.py # HTML parsing and data models
-│   └── database.py       # SQLite database operations
+│   ├── database.py       # Database abstraction layer
+│   └── db_adapter.py     # Database adapters (SQLite/PostgreSQL)
 ├── display/               # UI formatting and display
 │   ├── tables.py         # Rich table displays
 │   ├── detailed.py       # Detailed data views
@@ -85,10 +86,17 @@ Each command module:
 
 **database.py**
 
-- SQLite database operations
+- Database abstraction layer (supports SQLite and PostgreSQL)
 - Historical data storage and retrieval
 - Data migration handling
 - Statistics and analytics queries
+
+**db_adapter.py**
+
+- Abstract DatabaseAdapter base class
+- SQLiteAdapter and PostgreSQLAdapter implementations
+- Factory pattern for database creation
+- Database-agnostic query interface
 
 ### Display Layer (`display/`)
 
@@ -111,6 +119,13 @@ Each command module:
 - Filtered and sorted outputs
 
 ### Utilities (`utils/`)
+
+**config.py**
+
+- YAML configuration management
+- User preferences (favorites, queries, defaults)
+- Database configuration (SQLite/PostgreSQL)
+- Configuration file creation and validation
 
 **logger.py**
 

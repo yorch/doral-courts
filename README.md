@@ -14,7 +14,7 @@ The Doral Courts CLI is a Python application that scrapes court availability dat
 - **Rich CLI Interface**: Beautiful tables and colored output using Rich library
 - **Favorite Courts**: Save and filter your frequently used courts with quick access
 - **Saved Queries**: Store commonly used search filters for instant access
-- **Historical Data**: Local SQLite database for tracking court availability over time
+- **Historical Data**: Database storage (SQLite or PostgreSQL) for tracking court availability over time
 - **Continuous Monitoring**: Background polling to build historical booking patterns
 - **Booking Analytics**: Analyze booking velocity and availability trends
 - **Data Export**: Save HTML and JSON data for analysis
@@ -34,6 +34,11 @@ uv sync
 
 # Or install with pip
 pip install -r requirements.txt
+
+# Optional: Install with PostgreSQL support
+uv sync --extra postgresql
+# Or with pip
+pip install -e .[postgresql]
 ```
 
 ### Basic Usage

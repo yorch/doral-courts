@@ -950,9 +950,54 @@ Potential future config:
 }
 ```
 
+### Database Configuration
+
+The application supports two database backends: SQLite (default) and PostgreSQL.
+
+**SQLite (Default)**:
+
+- Local file-based database (`doral_courts.db`)
+- No additional setup required
+- Perfect for personal use and development
+- Easy to backup (just copy the file)
+
+**PostgreSQL (Optional)**:
+
+- Client-server database
+- Better performance for high-frequency monitoring
+- Supports concurrent access
+- Suitable for production deployments
+
+**Configuration** (`~/.doral-courts/config.yaml`):
+
+```yaml
+database:
+  type: sqlite  # or 'postgresql'
+  sqlite:
+    path: doral_courts.db
+  # postgresql:
+  #   host: localhost
+  #   port: 5432
+  #   database: doral_courts
+  #   user: doral_user
+  #   password: your_password
+```
+
+**Installation**:
+
+```bash
+# Default installation (SQLite only)
+uv sync
+
+# With PostgreSQL support
+uv sync --extra postgresql
+```
+
+See [Monitoring Guide - Database Configuration](./monitoring-guide.md#database-configuration) for detailed PostgreSQL setup.
+
 ### Database Schema
 
-**SQLite Tables**:
+**Database Tables** (compatible with both SQLite and PostgreSQL):
 
 ```sql
 -- Main court records
@@ -1031,6 +1076,11 @@ doral-courts slots --court "DLP Tennis Court 1" --available-only
 - **click** (>=8.2.0): CLI framework
 - **rich** (>=14.0.0): Terminal formatting
 - **cloudscraper** (>=1.2.0): Cloudflare bypass
+- **pyyaml** (>=6.0.0): YAML configuration file support
+
+### Optional Dependencies
+
+- **psycopg2-binary** (>=2.9.0): PostgreSQL database support
 
 ### Development Dependencies
 

@@ -5,6 +5,7 @@ This guide explains how to use the continuous monitoring and analytics features 
 ## Table of Contents
 
 - [Overview](#overview)
+  - [Database Configuration](#database-configuration)
 - [Quick Start](#quick-start)
 - [Use Cases](#use-cases)
 - [Monitor Command](#monitor-command)
@@ -42,6 +43,96 @@ All monitoring data is automatically stored in `doral_courts.db`:
 - **Time Slots Table**: 17,620+ individual time slot records with timestamps
 - **Tracking**: Every poll saves the current state with timestamp
 - **Deduplication**: Only changed data is stored to save space
+
+### Database Configuration
+
+By default, the CLI uses SQLite (a local file database). For larger deployments or production use, you can configure PostgreSQL.
+
+**SQLite (Default)**:
+
+- Local file-based database (`doral_courts.db`)
+- No setup required
+- Perfect for personal use
+- Easy to backup (just copy the file)
+
+**PostgreSQL (Optional)**:
+
+- Client-server database
+- Better performance for high-frequency monitoring
+- Concurrent access support
+- Suitable for production deployments
+
+#### Configuring PostgreSQL
+
+1. **Install PostgreSQL Support**:
+
+```bash
+# Install with PostgreSQL support
+uv pip install doral-courts[postgresql]
+
+# Or add to existing installation
+uv pip install psycopg2-binary
+```
+
+2. **Create PostgreSQL Database**:
+
+```bash
+# Connect to PostgreSQL
+psql -U postgres
+
+# Create database
+CREATE DATABASE doral_courts;
+
+# Create user (optional)
+CREATE USER doral_user WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE doral_courts TO doral_user;
+\q
+```
+
+3. **Configure in `~/.doral-courts/config.yaml`**:
+
+```yaml
+database:
+  type: postgresql  # Change from 'sqlite' to 'postgresql'
+  postgresql:
+    host: localhost
+    port: 5432
+    database: doral_courts
+    user: doral_user
+    password: your_password
+  # sqlite:  # No longer used when type is postgresql
+  #   path: doral_courts.db
+```
+
+4. **Verify Configuration**:
+
+```bash
+# Test database connection
+uv run doral-courts stats
+
+# You should see PostgreSQL in the logs
+# "Creating PostgreSQL adapter for doral_user@localhost:5432/doral_courts"
+```
+
+**When to Use PostgreSQL**:
+
+- High-frequency monitoring (intervals < 5 minutes)
+- Multiple concurrent monitors
+- Production deployments
+- Server environments
+- Need for database backups/replication
+
+**Switching Between Databases**:
+
+```yaml
+# Switch back to SQLite
+database:
+  type: sqlite
+  sqlite:
+    path: doral_courts.db
+```
+
+Note: Data is not automatically migrated between SQLite and PostgreSQL. If switching, you'll start with an empty database.
 
 ---
 

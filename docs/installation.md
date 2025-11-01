@@ -49,6 +49,22 @@ pip install -r requirements.txt
 doral-courts --help
 ```
 
+### Optional: PostgreSQL Support
+
+By default, the application uses SQLite for data storage. For production deployments or high-frequency monitoring, you can install PostgreSQL support:
+
+```bash
+# Using uv
+uv sync --extra postgresql
+
+# Using pip
+pip install -e .[postgresql]
+# Or directly
+pip install psycopg2-binary
+```
+
+See the [Monitoring Guide - Database Configuration](./monitoring-guide.md#database-configuration) for PostgreSQL setup instructions.
+
 ## Verification
 
 After installation, verify everything works:
@@ -78,7 +94,9 @@ The application doesn't require environment variables for basic usage, but you c
 The application creates the following directories:
 
 - `data/` - Exported HTML and JSON files (created when using `--save-data`)
-- `doral_courts.db` - SQLite database for historical data
+- `doral_courts.db` - SQLite database file for historical data (default)
+  - Not created if using PostgreSQL backend
+- `~/.doral-courts/config.yaml` - User configuration file (created on first run)
 
 ## Troubleshooting
 

@@ -74,6 +74,19 @@ class Config:
                     "sport": None,
                     "date_offset": 0,  # 0 = today, 1 = tomorrow
                 },
+                "database": {
+                    "type": "sqlite",  # sqlite or postgresql
+                    "sqlite": {
+                        "path": "doral_courts.db",
+                    },
+                    # "postgresql": {
+                    #     "host": "localhost",
+                    #     "port": 5432,
+                    #     "database": "doral_courts",
+                    #     "user": "postgres",
+                    #     "password": "password",
+                    # },
+                },
             }
             self._write_config(default_config)
 
@@ -266,3 +279,32 @@ class Config:
         config["defaults"][key] = value
         self._write_config(config)
         logger.info(f"Set default '{key}' to '{value}'")
+
+    def get_database_config(self) -> Dict[str, Any]:
+        """
+        Get database configuration.
+
+        Returns:
+            Database configuration dictionary with 'type' and type-specific settings
+        """
+        config = self._read_config()
+        db_config = config.get("database", {})
+
+        # Ensure default if missing
+        if not db_config:
+            db_config = {
+                "type": "sqlite",
+                "sqlite": {"path": "doral_courts.db"},
+            }
+
+        return db_config
+
+    def get_database_type(self) -> str:
+        """
+        Get configured database type.
+
+        Returns:
+            Database type: 'sqlite' or 'postgresql'
+        """
+        db_config = self.get_database_config()
+        return db_config.get("type", "sqlite")
