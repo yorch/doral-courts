@@ -1,8 +1,5 @@
 # Doral Courts CLI - Technical Reference
 
-**Version**: 0.1.0
-**Last Updated**: 2025-10-31
-
 ## Table of Contents
 
 - [Overview](#overview)
@@ -550,6 +547,82 @@ doral-courts query weekend_pickleball
 # Show available queries (when query not found)
 doral-courts query nonexistent
 ```
+
+### 13. `monitor` - Continuous Background Polling
+
+**Purpose**: Run continuous background monitoring to collect historical booking data
+
+**Usage**:
+
+```bash
+doral-courts monitor [OPTIONS]
+```
+
+**Options**:
+
+- `--interval INTEGER` - Polling interval in minutes (default: 10)
+- `--sport [tennis|pickleball]` - Filter by sport type (default: monitor both)
+- `--location TEXT` - Filter by location (e.g., "Doral Legacy Park")
+- `--days-ahead INTEGER` - Number of days to monitor ahead (default: 2)
+- `--quiet` - Suppress console output, log only
+
+**Behavior**:
+
+- Polls court reservation system at regular intervals
+- Automatically stores all data in database with timestamps
+- Tracks when courts transition from available → booked
+- Graceful shutdown on Ctrl+C or SIGTERM
+- Designed for long-running background operation
+
+**Example**:
+
+```bash
+# Basic monitoring - all courts every 10 minutes
+nohup doral-courts monitor --quiet > monitor.log 2>&1 &
+
+# Targeted - pickleball only, every 5 minutes
+nohup doral-courts monitor --sport pickleball --interval 5 --quiet > pickleball.log 2>&1 &
+```
+
+**See Also**: [Monitoring Guide](./monitoring-guide.md) for detailed usage instructions
+
+### 14. `analyze` - Booking Velocity & Pattern Analysis
+
+**Purpose**: Analyze historical data to understand booking patterns and velocity
+
+**Usage**:
+
+```bash
+doral-courts analyze [OPTIONS]
+```
+
+**Options**:
+
+- `--sport [tennis|pickleball]` - Filter by sport type
+- `--location TEXT` - Filter by location
+- `--court TEXT` - Filter by specific court name
+- `--time-slot TEXT` - Filter by time slot (e.g., "8:00 am", "6:00 pm")
+- `--day-of-week [Monday|...|Sunday]` - Filter by day of week
+- `--days INTEGER` - Number of days of history to analyze (default: 30)
+- `--mode [velocity|availability|summary]` - Analysis mode (default: summary)
+
+**Analysis Modes**:
+
+- **Velocity Mode**: Shows how quickly courts get booked after becoming available
+- **Availability Mode**: Day-of-week availability patterns
+- **Summary Mode**: Combines both velocity and availability analysis
+
+**Example**:
+
+```bash
+# How fast do pickleball courts get booked?
+doral-courts analyze --sport pickleball --mode velocity
+
+# Friday 8am pickleball booking patterns
+doral-courts analyze --sport pickleball --time-slot "8:00 am" --day-of-week Friday --mode velocity
+```
+
+**See Also**: [Monitoring Guide](./monitoring-guide.md) for detailed usage instructions
 
 ---
 

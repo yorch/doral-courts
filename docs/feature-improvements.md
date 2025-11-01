@@ -1,8 +1,5 @@
 # Doral Courts CLI - High-Value Feature Improvements
 
-**Date**: 2025-10-31
-**Current Version**: 0.1.0
-
 This document proposes strategic feature improvements prioritized by value, feasibility, and user impact.
 
 ## Recent Updates

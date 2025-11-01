@@ -15,6 +15,8 @@ The Doral Courts CLI is a Python application that scrapes court availability dat
 - **Favorite Courts**: Save and filter your frequently used courts with quick access
 - **Saved Queries**: Store commonly used search filters for instant access
 - **Historical Data**: Local SQLite database for tracking court availability over time
+- **Continuous Monitoring**: Background polling to build historical booking patterns
+- **Booking Analytics**: Analyze booking velocity and availability trends
 - **Data Export**: Save HTML and JSON data for analysis
 - **Watch Mode**: Monitor court availability with real-time updates
 - **Comprehensive Filtering**: Filter by sport, location, status, and date
@@ -57,6 +59,7 @@ uv run doral-courts watch --interval 300
 
 For detailed documentation, see the [docs](./docs/) directory:
 
+- **[Monitoring Guide](./docs/monitoring-guide.md)** - 🆕 Continuous monitoring and booking analytics
 - **[Reference](./docs/reference.md)** - Complete feature documentation and technical reference
 - **[Feature Improvements](./docs/feature-improvements.md)** - Roadmap and planned enhancements
 - **[Installation Guide](./docs/installation.md)** - Detailed setup instructions
@@ -77,6 +80,8 @@ For detailed documentation, see the [docs](./docs/) directory:
 | `data`                 | Comprehensive scraped data view             |
 | `favorites`            | Manage favorite courts (add/remove/list)    |
 | `query`                | Run saved queries by name                   |
+| `monitor`              | Continuous background polling for analytics |
+| `analyze`              | Booking velocity and pattern analysis       |
 | `history`              | View historical court data                  |
 | `watch`                | Monitor availability with real-time updates |
 | `stats`                | Database statistics                         |
@@ -112,6 +117,13 @@ uv run doral-courts list --favorites  # Show only favorite courts
 
 # Run a saved query
 uv run doral-courts query my_tennis
+
+# Continuous monitoring for analytics (runs in background)
+uv run doral-courts monitor --sport pickleball --interval 10
+
+# Analyze booking patterns
+uv run doral-courts analyze --sport pickleball --mode velocity
+uv run doral-courts analyze --location "Doral Legacy Park" --day-of-week Friday
 ```
 
 ## 🗄️ Data Storage
