@@ -36,8 +36,10 @@ class Database:
     """
 
     def __init__(
-        self, db_path: Optional[str] = None, adapter: Optional[DatabaseAdapter] = None
-    ):
+        self,
+        db_path: Optional[str] = None,
+        adapter: Optional[DatabaseAdapter] = None,
+    ) -> None:
         """
         Initialize database connection and setup schema.
 
@@ -72,7 +74,7 @@ class Database:
 
         self.init_database()
 
-    def init_database(self):
+    def init_database(self) -> None:
         """
         Initialize the database with required tables and indexes.
 
@@ -109,7 +111,8 @@ class Database:
                 conn,
                 f"""
                 CREATE TABLE IF NOT EXISTS courts (
-                    {id_column},
+                    {id_column},"""  # noqa: S608
+                """
                     name TEXT NOT NULL,
                     sport_type TEXT NOT NULL,
                     location TEXT NOT NULL,
@@ -262,10 +265,17 @@ class Database:
                             conn,
                             f"""
                             INSERT OR REPLACE INTO courts
-                            (name, sport_type, location, capacity, availability_status,
+                            (name, sport_type, location, capacity,
+                             availability_status,
                              date, time_slot, price, last_updated)
-                            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
-                        """,
+                            VALUES (
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                CURRENT_TIMESTAMP
+                            )
+                        """,  # noqa: S608
                             (
                                 court.name,
                                 court.sport_type,
@@ -282,9 +292,16 @@ class Database:
                             conn,
                             f"""
                             INSERT INTO courts
-                            (name, sport_type, location, capacity, availability_status,
+                            (name, sport_type, location, capacity,
+                             availability_status,
                              date, time_slot, price, last_updated)
-                            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
+                            VALUES (
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                CURRENT_TIMESTAMP
+                            )
                             ON CONFLICT (name, date, time_slot)
                             DO UPDATE SET
                                 sport_type = EXCLUDED.sport_type,
@@ -293,7 +310,7 @@ class Database:
                                 availability_status = EXCLUDED.availability_status,
                                 price = EXCLUDED.price,
                                 last_updated = CURRENT_TIMESTAMP
-                        """,
+                        """,  # noqa: S608
                             (
                                 court.name,
                                 court.sport_type,
@@ -309,13 +326,16 @@ class Database:
                     # Get the court ID
                     court_id = cursor.lastrowid
                     if court_id is None or court_id == 0:
-                        # If INSERT OR REPLACE/ON CONFLICT updated an existing record, get the ID
+                        # If INSERT OR REPLACE/ON CONFLICT updated
+                        # an existing record, get the ID
                         cursor = self.adapter.execute(
                             conn,
                             f"""
                             SELECT id FROM courts
-                            WHERE name = {placeholder} AND date = {placeholder} AND time_slot = {placeholder}
-                        """,
+                            WHERE name = {placeholder}
+                                AND date = {placeholder}
+                                AND time_slot = {placeholder}
+                        """,  # noqa: S608
                             (court.name, court.date, court.time_slot),
                         )
                         result = self.adapter.fetchone(cursor)
@@ -334,8 +354,9 @@ class Database:
                             conn,
                             f"""
                             DELETE FROM time_slots
-                            WHERE court_id = {placeholder} AND date = {placeholder}
-                        """,
+                            WHERE court_id = {placeholder}
+                                AND date = {placeholder}
+                        """,  # noqa: S608
                             (court_id, court.date),
                         )
 
@@ -345,9 +366,15 @@ class Database:
                                 conn,
                                 f"""
                                 INSERT INTO time_slots
-                                (court_id, start_time, end_time, status, date, last_updated)
-                                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
-                            """,
+                                (court_id, start_time, end_time,
+                                 status, date, last_updated)
+                                VALUES (
+                                    {placeholder}, {placeholder},
+                                    {placeholder}, {placeholder},
+                                    {placeholder},
+                                    CURRENT_TIMESTAMP
+                                )
+                            """,  # noqa: S608
                                 (
                                     court_id,
                                     slot.start_time,
@@ -384,19 +411,26 @@ class Database:
         )
 
         placeholder = self.adapter.get_placeholder()
-        query = "SELECT id, name, sport_type, location, capacity, availability_status, date, time_slot, price FROM courts WHERE 1=1"
-        params = []
+        query = (  # noqa: S608
+            "SELECT id, name, sport_type, location,"
+            " capacity, availability_status,"
+            " date, time_slot, price"
+            " FROM courts WHERE 1=1"
+        )
+        params: list[str] = []
 
         if sport_type:
-            query += f" AND sport_type = {placeholder}"
+            query += f" AND sport_type = {placeholder}"  # noqa: S608
             params.append(sport_type)
 
         if availability_status:
-            query += f" AND availability_status = {placeholder}"
+            query += (  # noqa: S608
+                f" AND availability_status = {placeholder}"
+            )
             params.append(availability_status)
 
         if date:
-            query += f" AND date = {placeholder}"
+            query += f" AND date = {placeholder}"  # noqa: S608
             params.append(date)
 
         query += " ORDER BY date, time_slot, sport_type, name"
@@ -454,9 +488,10 @@ class Database:
                 f"""
                 SELECT start_time, end_time, status
                 FROM time_slots
-                WHERE court_id = {placeholder} AND date = {placeholder}
+                WHERE court_id = {placeholder}
+                    AND date = {placeholder}
                 ORDER BY start_time
-            """,
+            """,  # noqa: S608
                 (court_id, date),
             )
             rows = self.adapter.fetchall(cursor)
@@ -470,7 +505,7 @@ class Database:
         finally:
             self.adapter.close(conn)
 
-    def clear_old_data(self, days_old: int = 7):
+    def clear_old_data(self, days_old: int = 7) -> None:
         """Remove court data older than specified days."""
         logger.info("Clearing data older than %d days", days_old)
 
@@ -482,8 +517,10 @@ class Database:
                 conn,
                 f"""
                 SELECT COUNT(*) FROM courts
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
             count_to_delete = self.adapter.fetchone(cursor)[0]
@@ -494,20 +531,27 @@ class Database:
                 conn,
                 f"""
                 SELECT COUNT(*) FROM time_slots
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
             time_slots_to_delete = self.adapter.fetchone(cursor)[0]
-            logger.debug("Found %d time slot records to delete", time_slots_to_delete)
+            logger.debug(
+                "Found %d time slot records to delete",
+                time_slots_to_delete,
+            )
 
             # Delete time slots first (due to foreign key constraints)
             self.adapter.execute(
                 conn,
                 f"""
                 DELETE FROM time_slots
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
 
@@ -516,8 +560,10 @@ class Database:
                 conn,
                 f"""
                 DELETE FROM courts
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
 
@@ -549,7 +595,9 @@ class Database:
 
             cursor = self.adapter.execute(
                 conn,
-                "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status",
+                "SELECT availability_status, COUNT(*)"
+                " FROM courts"
+                " GROUP BY availability_status",
             )
             availability_counts = dict(self.adapter.fetchall(cursor))
             logger.debug("Availability breakdown: %s", availability_counts)

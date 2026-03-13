@@ -20,7 +20,7 @@ console = Console()
 @click.command(name="query")
 @click.argument("query_name")
 @click.pass_context
-def query(ctx, query_name: str):
+def query(ctx: click.Context, query_name: str) -> None:
     """
     Run a saved query by name.
 
@@ -156,7 +156,8 @@ def query(ctx, query_name: str):
             if court.sport_type.lower() == sport.lower()
         ]
         logger.debug(
-            f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts"
+            f"Applied sport filter '{sport}': "
+            f"{len(courts)} -> {len(filtered_courts)} courts"
         )
 
     if status:

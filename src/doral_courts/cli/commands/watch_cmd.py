@@ -30,10 +30,18 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to monitor (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to monitor (default: today). "
+        "Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.pass_context
-def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
+def watch(
+    ctx: click.Context,
+    interval: int,
+    sport: Optional[str],
+    date: Optional[str],
+) -> None:
     """Monitor court availability with real-time updates."""
     # Parse date input
     try:
@@ -46,7 +54,8 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
     logger.debug(f"Watch filters - Sport: {sport}, Date: {date} -> {parsed_date}")
 
     console.print(
-        f"[blue]Monitoring court availability every {interval} seconds. Press Ctrl+C to stop.[/blue]"
+        f"[blue]Monitoring court availability every "
+        f"{interval} seconds. Press Ctrl+C to stop.[/blue]"
     )
 
     update_count = 0
@@ -56,9 +65,8 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
             logger.debug(f"Watch update #{update_count}")
 
             console.clear()
-            console.print(
-                f"[bold]Last updated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}[/bold]\n"
-            )
+            now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            console.print(f"[bold]Last updated: {now_str}[/bold]\n")
 
             db = Database()
             scraper = Scraper()
@@ -101,7 +109,9 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
                                 scraper.get_last_request_url(),
                             )
                             logger.info(
-                                f"Watch data saved - HTML: {html_path}, JSON: {json_path}"
+                                f"Watch data saved - "
+                                f"HTML: {html_path}, "
+                                f"JSON: {json_path}"
                             )
                         except Exception as e:
                             logger.error(f"Error saving watch data: {e}")
@@ -121,7 +131,9 @@ def watch(ctx, interval: int, sport: Optional[str], date: Optional[str]):
             else:
                 console.print("[yellow]No court data available.[/yellow]")
                 console.print(
-                    "[dim]The website may be blocking requests. Try stopping and restarting.[/dim]"
+                    "[dim]The website may be blocking "
+                    "requests. Try stopping and "
+                    "restarting.[/dim]"
                 )
 
             console.print(f"\n[dim]Next update in {interval} seconds...[/dim]")

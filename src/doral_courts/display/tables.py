@@ -12,7 +12,7 @@ console = Console()
 
 def display_courts_table(
     courts: List[Court], favorite_court_names: Optional[Set[str]] = None
-):
+) -> None:
     """
     Display courts in a formatted Rich table.
 
@@ -96,8 +96,10 @@ def display_courts_table(
 
 
 def display_available_slots_table(
-    courts: List[Court], date: str, source_url: str = None
-):
+    courts: List[Court],
+    date: str,
+    source_url: Optional[str] = None,
+) -> None:
     """Display available time slots per court in a comprehensive table format."""
     if not courts:
         console.print("[red]No court data available.[/red]")

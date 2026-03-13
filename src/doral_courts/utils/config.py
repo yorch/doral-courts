@@ -1,7 +1,7 @@
 """Configuration management for Doral Courts CLI."""
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import yaml
 
@@ -45,12 +45,13 @@ class Config:
         config.add_favorite("DLP Tennis Court 1")
     """
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None) -> None:
         """
         Initialize configuration manager.
 
         Args:
-            config_path: Optional custom config path (default: ~/.doral-courts/config.yaml)
+            config_path: Optional custom config path
+                (default: ~/.doral-courts/config.yaml)
         """
         if config_path:
             self.config_path = Path(config_path)
@@ -89,7 +90,7 @@ class Config:
             }
             self._write_config(default_config)
 
-    def _read_config(self) -> Dict[str, Any]:
+    def _read_config(self) -> Dict[str, object]:
         """
         Read configuration from YAML file.
 
@@ -111,7 +112,7 @@ class Config:
             logger.error(f"Unexpected error reading config: {e}")
             return {}
 
-    def _write_config(self, config: Dict[str, Any]) -> None:
+    def _write_config(self, config: Dict[str, object]) -> None:
         """
         Write configuration to YAML file.
 
@@ -250,7 +251,7 @@ class Config:
         logger.info(f"Removed query '{query_name}'")
         return True
 
-    def get_default(self, key: str) -> Optional[Any]:
+    def get_default(self, key: str) -> Optional[Union[str, int, float, bool]]:
         """
         Get a default configuration value.
 
@@ -263,7 +264,7 @@ class Config:
         config = self._read_config()
         return config.get("defaults", {}).get(key)
 
-    def set_default(self, key: str, value: Any) -> None:
+    def set_default(self, key: str, value: Union[str, int, float, bool, None]) -> None:
         """
         Set a default configuration value.
 
@@ -279,7 +280,7 @@ class Config:
         self._write_config(config)
         logger.info(f"Set default '{key}' to '{value}'")
 
-    def get_database_config(self) -> Dict[str, Any]:
+    def get_database_config(self) -> Dict[str, object]:
         """
         Get database configuration.
 

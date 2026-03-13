@@ -31,11 +31,22 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). Supports"
+        " MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.pass_context
-def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
-    """Display comprehensive view of all scraped data from the website. Always fetches fresh data."""
+def data(
+    ctx: click.Context,
+    mode: str,
+    sport: Optional[str],
+    date: Optional[str],
+) -> None:
+    """Display comprehensive view of all scraped data.
+
+    Always fetches fresh data from the website.
+    """
     # Parse date input
     try:
         parsed_date = parse_date_input(date)
@@ -108,7 +119,8 @@ def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
             if court.sport_type.lower() == sport.lower()
         ]
         logger.debug(
-            f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts"
+            f"Applied sport filter '{sport}': "
+            f"{len(courts)} -> {len(filtered_courts)} courts"
         )
 
     logger.info(f"Found {len(filtered_courts)} courts for comprehensive display")

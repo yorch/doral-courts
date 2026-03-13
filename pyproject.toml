@@ -60,15 +60,7 @@ line-length = 88
 
 [tool.ruff.lint]
 select = ["E", "W", "F", "I", "N", "B", "A", "S", "T", "ANN"]
-ignore = [
-    "ANN001",  # Missing type annotation for function argument (pre-existing)
-    "ANN201",  # Missing return type annotation for public function (pre-existing)
-    "ANN202",  # Missing return type annotation for private function (pre-existing)
-    "ANN204",  # Missing return type annotation for special method (pre-existing)
-    "ANN401",  # Dynamically typed expressions (typing.Any) are disallowed (pre-existing)
-    "S608",    # Possible SQL injection via string-based query construction (false positives)
-    "E501",    # Line too long (pre-existing, formatter handles most cases)
-]
+ignore = []
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["S101"]  # Allow assert in tests

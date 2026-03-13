@@ -10,7 +10,10 @@ from ..core.html_extractor import Court
 console = Console()
 
 
-def display_courts_list(courts: List[Court], sport_filter: Optional[str] = None):
+def display_courts_list(
+    courts: List[Court],
+    sport_filter: Optional[str] = None,
+) -> None:
     """Display a simple list of unique court names."""
     if not courts:
         console.print("[red]No court data available.[/red]")
@@ -51,7 +54,10 @@ def display_courts_list(courts: List[Court], sport_filter: Optional[str] = None)
     console.print(table)
 
 
-def display_locations_list(courts: List[Court], sport_filter: Optional[str] = None):
+def display_locations_list(
+    courts: List[Court],
+    sport_filter: Optional[str] = None,
+) -> None:
     """Display a list of unique locations with court counts."""
     if not courts:
         console.print("[red]No court data available.[/red]")

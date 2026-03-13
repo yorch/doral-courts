@@ -21,11 +21,19 @@ console = Console()
 @click.option("--court", help="Show detailed time slots for a specific court")
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). "
+        "Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.option("--available-only", is_flag=True, help="Show only available time slots")
 @click.pass_context
-def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
+def slots(
+    ctx: click.Context,
+    court: Optional[str],
+    date: Optional[str],
+    available_only: bool,
+) -> None:
     """Show detailed time slot availability for courts. Always fetches fresh data."""
     # Parse date input
     try:
@@ -36,7 +44,8 @@ def slots(ctx, court: Optional[str], date: Optional[str], available_only: bool):
 
     logger.info("Starting detailed time slots display - fetching fresh data")
     logger.debug(
-        f"Filters - Court: {court}, Date: {date} -> {parsed_date}, Available only: {available_only}"
+        f"Filters - Court: {court}, Date: {date} -> {parsed_date}, "
+        f"Available only: {available_only}"
     )
 
     db = Database()

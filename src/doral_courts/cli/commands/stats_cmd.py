@@ -13,7 +13,7 @@ console = Console()
 
 @click.command()
 @click.pass_context
-def stats(ctx):
+def stats(ctx: click.Context) -> None:
     """
     Show database statistics.
 

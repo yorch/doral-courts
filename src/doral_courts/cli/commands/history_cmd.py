@@ -28,7 +28,10 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). Supports"
+        " MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.option(
     "--mode",
@@ -38,8 +41,12 @@ console = Console()
 )
 @click.pass_context
 def history(
-    ctx, sport: Optional[str], status: Optional[str], date: Optional[str], mode: str
-):
+    ctx: click.Context,
+    sport: Optional[str],
+    status: Optional[str],
+    date: Optional[str],
+    mode: str,
+) -> None:
     """View historical court data from database (cached data)."""
     # Parse date input
     try:
@@ -50,7 +57,8 @@ def history(
 
     logger.info("Starting historical data display from database")
     logger.debug(
-        f"Filters - Sport: {sport}, Status: {status}, Date: {date} -> {parsed_date}, Mode: {mode}"
+        f"Filters - Sport: {sport}, Status: {status}, "
+        f"Date: {date} -> {parsed_date}, Mode: {mode}"
     )
 
     db = Database()

@@ -25,10 +25,13 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). "
+        "Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.pass_context
-def list_courts(ctx, sport: Optional[str], date: Optional[str]):
+def list_courts(ctx: click.Context, sport: Optional[str], date: Optional[str]) -> None:
     """List all available court names."""
     # Parse date input
     try:

@@ -3,6 +3,7 @@
 import signal
 import sys
 import time
+import types
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -20,7 +21,7 @@ console = Console()
 shutdown_requested = False
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     """Handle shutdown signals gracefully."""
     global shutdown_requested
     shutdown_requested = True
@@ -56,13 +57,13 @@ def signal_handler(signum, frame):
 )
 @click.pass_context
 def monitor(
-    ctx,
+    ctx: click.Context,
     interval: int,
     sport: Optional[str],
     location: Optional[str],
     days_ahead: int,
     quiet: bool,
-):
+) -> None:
     """Run continuous background monitoring of court availability.
 
     This command polls the court reservation system at regular intervals and
@@ -123,14 +124,12 @@ def monitor(
             poll_count += 1
             poll_start = datetime.now()
 
-            logger.info(
-                f"Poll #{poll_count} starting at {poll_start.strftime('%Y-%m-%d %H:%M:%S')}"
-            )
+            poll_time = poll_start.strftime("%Y-%m-%d %H:%M:%S")
+            logger.info(f"Poll #{poll_count} starting at {poll_time}")
 
             if not quiet:
-                console.print(
-                    f"\n[dim]Poll #{poll_count} - {poll_start.strftime('%H:%M:%S')}[/dim]"
-                )
+                poll_hms = poll_start.strftime("%H:%M:%S")
+                console.print(f"\n[dim]Poll #{poll_count} - {poll_hms}[/dim]")
 
             # Calculate dates to monitor
             dates_to_monitor = []
@@ -158,12 +157,15 @@ def monitor(
                         total_courts_saved += inserted
 
                         logger.info(
-                            f"  {target_date}: {len(courts)} courts fetched, {inserted} saved"
+                            f"  {target_date}: {len(courts)} courts "
+                            f"fetched, {inserted} saved"
                         )
 
                         if not quiet:
                             console.print(
-                                f"  [green]✓[/green] {target_date}: {len(courts)} courts, {inserted} saved"
+                                f"  [green]✓[/green] {target_date}: "
+                                f"{len(courts)} courts, "
+                                f"{inserted} saved"
                             )
                     else:
                         logger.warning(f"  {target_date}: No courts retrieved")
@@ -180,7 +182,8 @@ def monitor(
             # Poll summary
             poll_duration = (datetime.now() - poll_start).total_seconds()
             logger.info(
-                f"Poll #{poll_count} complete - {courts_this_poll} courts in {poll_duration:.1f}s"
+                f"Poll #{poll_count} complete - "
+                f"{courts_this_poll} courts in {poll_duration:.1f}s"
             )
 
             if not quiet:
@@ -208,7 +211,8 @@ def monitor(
                         sleep_time -= 1
                 else:
                     logger.warning(
-                        f"Poll took longer than interval ({poll_duration:.1f}s > {interval_seconds}s)"
+                        f"Poll took longer than interval "
+                        f"({poll_duration:.1f}s > {interval_seconds}s)"
                     )
 
     except KeyboardInterrupt:

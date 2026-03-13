@@ -26,7 +26,7 @@ from .commands.watch_cmd import watch
     "--save-data", is_flag=True, help="Save retrieved HTML and JSON data to files"
 )
 @click.pass_context
-def cli(ctx, verbose, save_data):
+def cli(ctx: click.Context, verbose: bool, save_data: bool) -> None:
     """
     Doral Courts CLI - Display tennis and pickleball court availability.
 

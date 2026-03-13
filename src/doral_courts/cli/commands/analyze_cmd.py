@@ -52,7 +52,10 @@ console = Console()
     "--mode",
     type=click.Choice(["velocity", "availability", "summary"], case_sensitive=False),
     default="summary",
-    help="Analysis mode: velocity (booking speed), availability (patterns), summary (both)",
+    help=(
+        "Analysis mode: velocity (booking speed),"
+        " availability (patterns), summary (both)"
+    ),
 )
 def analyze(
     sport: Optional[str],
@@ -62,7 +65,7 @@ def analyze(
     day_of_week: Optional[str],
     days: int,
     mode: str,
-):
+) -> None:
     """Analyze court booking patterns and velocity.
 
     This command analyzes historical data to understand booking patterns:
@@ -75,7 +78,8 @@ def analyze(
         doral-courts analyze --sport pickleball --mode velocity
 
         # See Friday 8am patterns for DLP
-        doral-courts analyze --location "Doral Legacy Park" --time-slot "8:00 am" --day-of-week Friday
+        doral-courts analyze --location "Doral Legacy Park" \\
+            --time-slot "8:00 am" --day-of-week Friday
 
         # Full summary for specific court
         doral-courts analyze --court "DLP Tennis Court 1" --mode summary
@@ -139,7 +143,7 @@ def _analyze_booking_velocity(
     end_date: datetime,
     time_slot_filter: Optional[str],
     day_of_week_filter: Optional[str],
-):
+) -> None:
     """Analyze how quickly courts get booked after becoming available."""
 
     console.print("[bold cyan]🚀 Booking Velocity Analysis[/bold cyan]\n")
@@ -159,7 +163,7 @@ def _analyze_booking_velocity(
         WHERE {filter_clause}
         AND ts.date BETWEEN ? AND ?
         ORDER BY c.name, ts.date, ts.start_time, ts.last_updated
-    """
+    """  # noqa: S608
 
     conn = sqlite3.connect(db.db_path)
     cursor = conn.cursor()
@@ -326,7 +330,7 @@ def _analyze_availability_patterns(
     start_date: datetime,
     end_date: datetime,
     day_of_week_filter: Optional[str],
-):
+) -> None:
     """Analyze availability patterns by day of week and time."""
 
     console.print("[bold cyan]📅 Availability Patterns[/bold cyan]\n")
@@ -344,7 +348,7 @@ def _analyze_availability_patterns(
         WHERE {filter_clause}
         AND date BETWEEN ? AND ?
         ORDER BY date
-    """
+    """  # noqa: S608
 
     conn = sqlite3.connect(db.db_path)
     cursor = conn.cursor()
