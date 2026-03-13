@@ -4,14 +4,13 @@ from typing import List
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 from ..core.html_extractor import Court
 
 console = Console()
 
 
-def display_detailed_court_data(courts: List[Court], source_url: str):
+def display_detailed_court_data(courts: List[Court], source_url: str) -> None:
     """Display comprehensive court data with full details."""
     console.print(
         f"\n[bold blue]Detailed Court Data ({len(courts)} courts)[/bold blue]"
@@ -40,13 +39,16 @@ Time Slots: {len(court.time_slots) if court.time_slots else 0} total"""
             details += "\n\nTime Slots:"
             for slot in court.time_slots:
                 status_color = "green" if slot.status == "Available" else "red"
-                details += f"\n  {slot.start_time}-{slot.end_time}: [{status_color}]{slot.status}[/]"
+                details += (
+                    f"\n  {slot.start_time}-{slot.end_time}:"
+                    f" [{status_color}]{slot.status}[/]"
+                )
 
         panel = Panel(details, border_style="blue", title_align="left")
         console.print(panel)
 
 
-def display_time_slots_summary(courts: List[Court], source_url: str):
+def display_time_slots_summary(courts: List[Court], source_url: str) -> None:
     """Display time slots analysis summary."""
     console.print(f"\n[bold blue]Time Slots Summary ({len(courts)} courts)[/bold blue]")
     console.print(f"[dim]Source: {source_url}[/dim]\n")
@@ -70,7 +72,8 @@ def display_time_slots_summary(courts: List[Court], source_url: str):
 
             console.print(f"[bold]{court.name}[/bold]")
             console.print(
-                f"  {court_available}/{court_total} slots available ({availability_pct:.1f}%)"
+                f"  {court_available}/{court_total} slots"
+                f" available ({availability_pct:.1f}%)"
             )
             console.print()
 

@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List, Optional
 
 from ..utils.config import Config
@@ -36,7 +35,11 @@ class Database:
         historical_courts = db.get_courts(sport_type="Tennis")
     """
 
-    def __init__(self, db_path: Optional[str] = None, adapter: Optional[DatabaseAdapter] = None):
+    def __init__(
+        self,
+        db_path: Optional[str] = None,
+        adapter: Optional[DatabaseAdapter] = None,
+    ) -> None:
         """
         Initialize database connection and setup schema.
 
@@ -50,11 +53,12 @@ class Database:
         if adapter:
             # Use provided adapter (for testing)
             self.adapter = adapter
-            self.db_path = getattr(adapter, 'db_path', None)
+            self.db_path = getattr(adapter, "db_path", None)
             logger.debug("Using provided database adapter")
         elif db_path:
             # Legacy mode: SQLite with specific path
             from .db_adapter import SQLiteAdapter
+
             self.adapter = SQLiteAdapter(db_path=db_path)
             self.db_path = db_path
             logger.debug("Using SQLite adapter with path: %s", db_path)
@@ -63,12 +67,14 @@ class Database:
             config = Config()
             db_config = config.get_database_config()
             self.adapter = create_adapter(db_config)
-            self.db_path = getattr(self.adapter, 'db_path', None)
-            logger.debug("Database adapter created from config: %s", db_config.get('type'))
+            self.db_path = getattr(self.adapter, "db_path", None)
+            logger.debug(
+                "Database adapter created from config: %s", db_config.get("type")
+            )
 
         self.init_database()
 
-    def init_database(self):
+    def init_database(self) -> None:
         """
         Initialize the database with required tables and indexes.
 
@@ -94,11 +100,8 @@ class Database:
 
         conn = self.adapter.connect()
         try:
-            # Determine database-specific syntax
-            placeholder = self.adapter.get_placeholder()
-
             # Use different primary key syntax for SQLite vs PostgreSQL
-            if hasattr(self.adapter, 'db_path'):  # SQLite
+            if hasattr(self.adapter, "db_path"):  # SQLite
                 id_column = "id INTEGER PRIMARY KEY AUTOINCREMENT"
             else:  # PostgreSQL
                 id_column = "id SERIAL PRIMARY KEY"
@@ -108,7 +111,8 @@ class Database:
                 conn,
                 f"""
                 CREATE TABLE IF NOT EXISTS courts (
-                    {id_column},
+                    {id_column},"""  # noqa: S608
+                """
                     name TEXT NOT NULL,
                     sport_type TEXT NOT NULL,
                     location TEXT NOT NULL,
@@ -120,20 +124,20 @@ class Database:
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(name, date, time_slot)
                 )
-            """
+            """,
             )
             logger.debug("Created courts table")
 
             # Migration: Check if surface_type column exists and rename it to capacity
             # This is SQLite-specific, skip for PostgreSQL
-            if hasattr(self.adapter, 'db_path'):  # SQLite only
+            if hasattr(self.adapter, "db_path"):  # SQLite only
                 cursor = self.adapter.execute(conn, "PRAGMA table_info(courts)")
                 columns = [column[1] for column in self.adapter.fetchall(cursor)]
                 if "surface_type" in columns and "capacity" not in columns:
                     logger.info("Migrating database: renaming surface_type to capacity")
                     self.adapter.execute(
                         conn,
-                        "ALTER TABLE courts RENAME COLUMN surface_type TO capacity"
+                        "ALTER TABLE courts RENAME COLUMN surface_type TO capacity",
                     )
 
             # Create time_slots table
@@ -151,7 +155,7 @@ class Database:
                     FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE,
                     UNIQUE(court_id, start_time, end_time, date)
                 )
-            """
+            """,
             )
             logger.debug("Created time_slots table")
 
@@ -161,7 +165,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_sport_type
                 ON courts(sport_type)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -169,7 +173,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_availability
                 ON courts(availability_status)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -177,7 +181,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_date
                 ON courts(date)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -185,7 +189,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_court_id
                 ON time_slots(court_id)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -193,7 +197,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_date
                 ON time_slots(date)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -201,7 +205,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_status
                 ON time_slots(status)
-            """
+            """,
             )
             logger.debug("Created database indexes")
 
@@ -256,15 +260,22 @@ class Database:
                     # Insert or update the main court record
                     # Note: INSERT OR REPLACE is SQLite-specific
                     # For PostgreSQL, we'll use INSERT ... ON CONFLICT
-                    if hasattr(self.adapter, 'db_path'):  # SQLite
+                    if hasattr(self.adapter, "db_path"):  # SQLite
                         cursor = self.adapter.execute(
                             conn,
                             f"""
                             INSERT OR REPLACE INTO courts
-                            (name, sport_type, location, capacity, availability_status,
+                            (name, sport_type, location, capacity,
+                             availability_status,
                              date, time_slot, price, last_updated)
-                            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
-                        """,
+                            VALUES (
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                CURRENT_TIMESTAMP
+                            )
+                        """,  # noqa: S608
                             (
                                 court.name,
                                 court.sport_type,
@@ -281,9 +292,16 @@ class Database:
                             conn,
                             f"""
                             INSERT INTO courts
-                            (name, sport_type, location, capacity, availability_status,
+                            (name, sport_type, location, capacity,
+                             availability_status,
                              date, time_slot, price, last_updated)
-                            VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
+                            VALUES (
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                {placeholder}, {placeholder},
+                                CURRENT_TIMESTAMP
+                            )
                             ON CONFLICT (name, date, time_slot)
                             DO UPDATE SET
                                 sport_type = EXCLUDED.sport_type,
@@ -292,7 +310,7 @@ class Database:
                                 availability_status = EXCLUDED.availability_status,
                                 price = EXCLUDED.price,
                                 last_updated = CURRENT_TIMESTAMP
-                        """,
+                        """,  # noqa: S608
                             (
                                 court.name,
                                 court.sport_type,
@@ -308,13 +326,16 @@ class Database:
                     # Get the court ID
                     court_id = cursor.lastrowid
                     if court_id is None or court_id == 0:
-                        # If INSERT OR REPLACE/ON CONFLICT updated an existing record, get the ID
+                        # If INSERT OR REPLACE/ON CONFLICT updated
+                        # an existing record, get the ID
                         cursor = self.adapter.execute(
                             conn,
                             f"""
                             SELECT id FROM courts
-                            WHERE name = {placeholder} AND date = {placeholder} AND time_slot = {placeholder}
-                        """,
+                            WHERE name = {placeholder}
+                                AND date = {placeholder}
+                                AND time_slot = {placeholder}
+                        """,  # noqa: S608
                             (court.name, court.date, court.time_slot),
                         )
                         result = self.adapter.fetchone(cursor)
@@ -333,8 +354,9 @@ class Database:
                             conn,
                             f"""
                             DELETE FROM time_slots
-                            WHERE court_id = {placeholder} AND date = {placeholder}
-                        """,
+                            WHERE court_id = {placeholder}
+                                AND date = {placeholder}
+                        """,  # noqa: S608
                             (court_id, court.date),
                         )
 
@@ -344,9 +366,15 @@ class Database:
                                 conn,
                                 f"""
                                 INSERT INTO time_slots
-                                (court_id, start_time, end_time, status, date, last_updated)
-                                VALUES ({placeholder}, {placeholder}, {placeholder}, {placeholder}, {placeholder}, CURRENT_TIMESTAMP)
-                            """,
+                                (court_id, start_time, end_time,
+                                 status, date, last_updated)
+                                VALUES (
+                                    {placeholder}, {placeholder},
+                                    {placeholder}, {placeholder},
+                                    {placeholder},
+                                    CURRENT_TIMESTAMP
+                                )
+                            """,  # noqa: S608
                                 (
                                     court_id,
                                     slot.start_time,
@@ -383,19 +411,26 @@ class Database:
         )
 
         placeholder = self.adapter.get_placeholder()
-        query = "SELECT id, name, sport_type, location, capacity, availability_status, date, time_slot, price FROM courts WHERE 1=1"
-        params = []
+        query = (  # noqa: S608
+            "SELECT id, name, sport_type, location,"
+            " capacity, availability_status,"
+            " date, time_slot, price"
+            " FROM courts WHERE 1=1"
+        )
+        params: list[str] = []
 
         if sport_type:
-            query += f" AND sport_type = {placeholder}"
+            query += f" AND sport_type = {placeholder}"  # noqa: S608
             params.append(sport_type)
 
         if availability_status:
-            query += f" AND availability_status = {placeholder}"
+            query += (  # noqa: S608
+                f" AND availability_status = {placeholder}"
+            )
             params.append(availability_status)
 
         if date:
-            query += f" AND date = {placeholder}"
+            query += f" AND date = {placeholder}"  # noqa: S608
             params.append(date)
 
         query += " ORDER BY date, time_slot, sport_type, name"
@@ -414,7 +449,9 @@ class Database:
                 court_id = row[0]
 
                 # Load time slots for this court
-                time_slots = self._load_time_slots(court_id, row[6])  # row[6] is the date
+                time_slots = self._load_time_slots(
+                    court_id, row[6]
+                )  # row[6] is the date
 
                 court = Court(
                     name=row[1],
@@ -451,9 +488,10 @@ class Database:
                 f"""
                 SELECT start_time, end_time, status
                 FROM time_slots
-                WHERE court_id = {placeholder} AND date = {placeholder}
+                WHERE court_id = {placeholder}
+                    AND date = {placeholder}
                 ORDER BY start_time
-            """,
+            """,  # noqa: S608
                 (court_id, date),
             )
             rows = self.adapter.fetchall(cursor)
@@ -467,7 +505,7 @@ class Database:
         finally:
             self.adapter.close(conn)
 
-    def clear_old_data(self, days_old: int = 7):
+    def clear_old_data(self, days_old: int = 7) -> None:
         """Remove court data older than specified days."""
         logger.info("Clearing data older than %d days", days_old)
 
@@ -479,8 +517,10 @@ class Database:
                 conn,
                 f"""
                 SELECT COUNT(*) FROM courts
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
             count_to_delete = self.adapter.fetchone(cursor)[0]
@@ -491,20 +531,27 @@ class Database:
                 conn,
                 f"""
                 SELECT COUNT(*) FROM time_slots
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
             time_slots_to_delete = self.adapter.fetchone(cursor)[0]
-            logger.debug("Found %d time slot records to delete", time_slots_to_delete)
+            logger.debug(
+                "Found %d time slot records to delete",
+                time_slots_to_delete,
+            )
 
             # Delete time slots first (due to foreign key constraints)
             self.adapter.execute(
                 conn,
                 f"""
                 DELETE FROM time_slots
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
 
@@ -513,8 +560,10 @@ class Database:
                 conn,
                 f"""
                 DELETE FROM courts
-                WHERE last_updated < datetime('now', '-' || {placeholder} || ' days')
-            """,
+                WHERE last_updated < datetime(
+                    'now', '-' || {placeholder} || ' days'
+                )
+            """,  # noqa: S608
                 (days_old,),
             )
 
@@ -539,15 +588,16 @@ class Database:
             logger.debug("Total courts in database: %d", total_courts)
 
             cursor = self.adapter.execute(
-                conn,
-                "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
+                conn, "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
             )
             sport_counts = dict(self.adapter.fetchall(cursor))
             logger.debug("Sport breakdown: %s", sport_counts)
 
             cursor = self.adapter.execute(
                 conn,
-                "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status"
+                "SELECT availability_status, COUNT(*)"
+                " FROM courts"
+                " GROUP BY availability_status",
             )
             availability_counts = dict(self.adapter.fetchall(cursor))
             logger.debug("Availability breakdown: %s", availability_counts)

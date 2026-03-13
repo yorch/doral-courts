@@ -31,7 +31,10 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). Supports"
+        " MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.option(
     "--favorites",
@@ -40,12 +43,12 @@ console = Console()
 )
 @click.pass_context
 def list_courts(
-    ctx,
+    ctx: click.Context,
     sport: Optional[str],
     status: Optional[str],
     date: Optional[str],
     favorites: bool,
-):
+) -> None:
     """
     List available courts with optional filters. Always fetches fresh data from website.
 
@@ -83,8 +86,6 @@ def list_courts(
         Always fetches fresh data from the website. For historical data,
         use the 'history' command instead.
     """
-    verbose = ctx.obj.get("verbose", False)
-
     # Parse date input
     try:
         parsed_date = parse_date_input(date)
@@ -136,7 +137,7 @@ def list_courts(
                     json_path = save_json_data(
                         courts, "_list", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:
@@ -146,7 +147,8 @@ def list_courts(
             logger.error("No court data could be retrieved from website")
             console.print("[red]Unable to fetch court data from website.[/red]")
             console.print(
-                "[yellow]The website may be temporarily unavailable or blocking requests.[/yellow]"
+                "[yellow]The website may be temporarily"
+                " unavailable or blocking requests.[/yellow]"
             )
             return
 
@@ -161,7 +163,8 @@ def list_courts(
             if court.sport_type.lower() == sport.lower()
         ]
         logger.debug(
-            f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts"
+            f"Applied sport filter '{sport}': "
+            f"{len(courts)} -> {len(filtered_courts)} courts"
         )
 
     if status:
@@ -178,7 +181,8 @@ def list_courts(
         if not favorite_court_names:
             console.print("[yellow]No favorite courts configured.[/yellow]")
             console.print(
-                "[blue]Add favorites with: doral-courts favorites add <court_name>[/blue]"
+                "[blue]Add favorites with: doral-courts"
+                " favorites add <court_name>[/blue]"
             )
             return
 

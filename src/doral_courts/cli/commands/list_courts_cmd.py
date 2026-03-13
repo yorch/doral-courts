@@ -25,10 +25,13 @@ console = Console()
 )
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). "
+        "Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.pass_context
-def list_courts(ctx, sport: Optional[str], date: Optional[str]):
+def list_courts(ctx: click.Context, sport: Optional[str], date: Optional[str]) -> None:
     """List all available court names."""
     # Parse date input
     try:
@@ -79,7 +82,7 @@ def list_courts(ctx, sport: Optional[str], date: Optional[str]):
                     json_path = save_json_data(
                         courts, "_list_courts", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

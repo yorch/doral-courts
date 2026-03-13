@@ -13,7 +13,7 @@ console = Console()
 
 
 @click.group()
-def favorites():
+def favorites() -> None:
     """
     Manage favorite courts.
 
@@ -34,7 +34,7 @@ def favorites():
 
 
 @favorites.command(name="list")
-def list_favorites():
+def list_favorites() -> None:
     """Show all favorite courts."""
     logger.info("Listing favorite courts")
 
@@ -62,7 +62,7 @@ def list_favorites():
 
 @favorites.command(name="add")
 @click.argument("court_name")
-def add_favorite(court_name: str):
+def add_favorite(court_name: str) -> None:
     """
     Add a court to favorites.
 
@@ -82,7 +82,9 @@ def add_favorite(court_name: str):
 
         # Show helpful tip
         panel = Panel(
-            "[blue]Tip:[/blue] Use [yellow]doral-courts list --favorites[/yellow] to see only your favorite courts",
+            "[blue]Tip:[/blue] Use [yellow]doral-courts list"
+            " --favorites[/yellow] to see only your"
+            " favorite courts",
             title="Quick Access",
             border_style="blue",
         )
@@ -93,7 +95,7 @@ def add_favorite(court_name: str):
 
 @favorites.command(name="remove")
 @click.argument("court_name")
-def remove_favorite(court_name: str):
+def remove_favorite(court_name: str) -> None:
     """
     Remove a court from favorites.
 

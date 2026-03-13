@@ -20,7 +20,10 @@ console = Console()
 @click.command(name="list-available-slots")
 @click.option(
     "--date",
-    help="Date to check (default: today). Supports MM/DD/YYYY, today, tomorrow, yesterday, +N, -N",
+    help=(
+        "Date to check (default: today). Supports"
+        " MM/DD/YYYY, today, tomorrow, yesterday, +N, -N"
+    ),
 )
 @click.option(
     "--sport",
@@ -30,8 +33,11 @@ console = Console()
 @click.option("--location", help='Filter by location (e.g., "Doral Central Park")')
 @click.pass_context
 def list_available_slots(
-    ctx, date: Optional[str], sport: Optional[str], location: Optional[str]
-):
+    ctx: click.Context,
+    date: Optional[str],
+    sport: Optional[str],
+    location: Optional[str],
+) -> None:
     """List all available time slots by court for a specific date."""
     # Parse date input
     try:
@@ -82,7 +88,7 @@ def list_available_slots(
                     json_path = save_json_data(
                         courts, "_available_slots", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:
@@ -104,7 +110,8 @@ def list_available_slots(
             if court.sport_type.lower() == sport.lower()
         ]
         logger.debug(
-            f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts"
+            f"Applied sport filter '{sport}': "
+            f"{len(courts)} -> {len(filtered_courts)} courts"
         )
 
     if location:

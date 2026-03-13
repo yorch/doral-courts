@@ -2,7 +2,8 @@
 
 import sqlite3
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional, Tuple
+from pathlib import Path
+from typing import List, Optional, Tuple
 
 from ..utils.logger import get_logger
 
@@ -13,54 +14,63 @@ class DatabaseAdapter(ABC):
     """Abstract base class for database adapters."""
 
     @abstractmethod
-    def connect(self) -> Any:
+    def connect(self) -> sqlite3.Connection:
         """Create and return a database connection."""
         pass
 
     @abstractmethod
     def execute(
-        self, conn: Any, query: str, params: Optional[Tuple] = None
-    ) -> Any:
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params: Optional[Tuple] = None,
+    ) -> sqlite3.Cursor:
         """Execute a query and return cursor."""
         pass
 
     @abstractmethod
     def executemany(
-        self, conn: Any, query: str, params_list: List[Tuple]
-    ) -> Any:
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params_list: List[Tuple],
+    ) -> sqlite3.Cursor:
         """Execute a query multiple times with different parameters."""
         pass
 
     @abstractmethod
-    def fetchall(self, cursor: Any) -> List[Tuple]:
+    def fetchall(self, cursor: sqlite3.Cursor) -> List[Tuple]:
         """Fetch all results from cursor."""
         pass
 
     @abstractmethod
-    def fetchone(self, cursor: Any) -> Optional[Tuple]:
+    def fetchone(self, cursor: sqlite3.Cursor) -> Optional[Tuple]:
         """Fetch one result from cursor."""
         pass
 
     @abstractmethod
-    def commit(self, conn: Any) -> None:
+    def commit(self, conn: sqlite3.Connection) -> None:
         """Commit transaction."""
         pass
 
     @abstractmethod
-    def close(self, conn: Any) -> None:
+    def close(self, conn: sqlite3.Connection) -> None:
         """Close connection."""
         pass
 
     @abstractmethod
     def get_placeholder(self) -> str:
-        """Get parameter placeholder for this database ('?' for SQLite, '%s' for PostgreSQL)."""
+        """Get parameter placeholder for this database.
+
+        Returns '?' for SQLite, '%s' for PostgreSQL.
+        """
         pass
 
 
 class SQLiteAdapter(DatabaseAdapter):
     """SQLite database adapter."""
 
-    def __init__(self, db_path: str = "doral_courts.db"):
+    def __init__(self, db_path: str | Path = "doral_courts.db") -> None:
         """
         Initialize SQLite adapter.
 
@@ -75,7 +85,10 @@ class SQLiteAdapter(DatabaseAdapter):
         return sqlite3.connect(self.db_path)
 
     def execute(
-        self, conn: sqlite3.Connection, query: str, params: Optional[Tuple] = None
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params: Optional[Tuple] = None,
     ) -> sqlite3.Cursor:
         """Execute query on SQLite connection."""
         cursor = conn.cursor()
@@ -86,7 +99,10 @@ class SQLiteAdapter(DatabaseAdapter):
         return cursor
 
     def executemany(
-        self, conn: sqlite3.Connection, query: str, params_list: List[Tuple]
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params_list: List[Tuple],
     ) -> sqlite3.Cursor:
         """Execute query multiple times on SQLite connection."""
         cursor = conn.cursor()
@@ -124,7 +140,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         database: str = "doral_courts",
         user: str = "postgres",
         password: str = "",
-    ):
+    ) -> None:
         """
         Initialize PostgreSQL adapter.
 
@@ -139,11 +155,12 @@ class PostgreSQLAdapter(DatabaseAdapter):
             import psycopg2
 
             self.psycopg2 = psycopg2
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
-                "psycopg2-binary is required for PostgreSQL support. "
-                "Install it with: uv pip install doral-courts[postgresql]"
-            )
+                "psycopg2-binary is required for PostgreSQL"
+                " support. Install it with: "
+                "uv pip install doral-courts[postgresql]"
+            ) from err
 
         self.host = host
         self.port = port
@@ -151,11 +168,9 @@ class PostgreSQLAdapter(DatabaseAdapter):
         self.user = user
         self.password = password
 
-        logger.debug(
-            f"PostgreSQL adapter initialized: {user}@{host}:{port}/{database}"
-        )
+        logger.debug(f"PostgreSQL adapter initialized: {user}@{host}:{port}/{database}")
 
-    def connect(self) -> Any:
+    def connect(self) -> sqlite3.Connection:
         """Create PostgreSQL connection."""
         return self.psycopg2.connect(
             host=self.host,
@@ -166,8 +181,11 @@ class PostgreSQLAdapter(DatabaseAdapter):
         )
 
     def execute(
-        self, conn: Any, query: str, params: Optional[Tuple] = None
-    ) -> Any:
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params: Optional[Tuple] = None,
+    ) -> sqlite3.Cursor:
         """Execute query on PostgreSQL connection."""
         cursor = conn.cursor()
         if params:
@@ -177,26 +195,29 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return cursor
 
     def executemany(
-        self, conn: Any, query: str, params_list: List[Tuple]
-    ) -> Any:
+        self,
+        conn: sqlite3.Connection,
+        query: str,
+        params_list: List[Tuple],
+    ) -> sqlite3.Cursor:
         """Execute query multiple times on PostgreSQL connection."""
         cursor = conn.cursor()
         cursor.executemany(query, params_list)
         return cursor
 
-    def fetchall(self, cursor: Any) -> List[Tuple]:
+    def fetchall(self, cursor: sqlite3.Cursor) -> List[Tuple]:
         """Fetch all results from PostgreSQL cursor."""
         return cursor.fetchall()
 
-    def fetchone(self, cursor: Any) -> Optional[Tuple]:
+    def fetchone(self, cursor: sqlite3.Cursor) -> Optional[Tuple]:
         """Fetch one result from PostgreSQL cursor."""
         return cursor.fetchone()
 
-    def commit(self, conn: Any) -> None:
+    def commit(self, conn: sqlite3.Connection) -> None:
         """Commit PostgreSQL transaction."""
         conn.commit()
 
-    def close(self, conn: Any) -> None:
+    def close(self, conn: sqlite3.Connection) -> None:
         """Close PostgreSQL connection."""
         conn.close()
 
@@ -205,12 +226,14 @@ class PostgreSQLAdapter(DatabaseAdapter):
         return "%s"
 
 
-def create_adapter(db_config: dict) -> DatabaseAdapter:
+def create_adapter(
+    db_config: dict[str, object],
+) -> DatabaseAdapter:
     """
     Create appropriate database adapter based on configuration.
 
     Args:
-        db_config: Database configuration dictionary from config.yaml
+        db_config: Database configuration dictionary
 
     Returns:
         DatabaseAdapter instance (SQLite or PostgreSQL)
@@ -229,8 +252,11 @@ def create_adapter(db_config: dict) -> DatabaseAdapter:
     elif db_type == "postgresql":
         pg_config = db_config.get("postgresql", {})
         logger.info(
-            f"Creating PostgreSQL adapter for {pg_config.get('user')}@"
-            f"{pg_config.get('host')}:{pg_config.get('port')}/{pg_config.get('database')}"
+            f"Creating PostgreSQL adapter for "
+            f"{pg_config.get('user')}@"
+            f"{pg_config.get('host')}:"
+            f"{pg_config.get('port')}/"
+            f"{pg_config.get('database')}"
         )
         return PostgreSQLAdapter(
             host=pg_config.get("host", "localhost"),

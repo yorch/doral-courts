@@ -3,6 +3,7 @@
 import signal
 import sys
 import time
+import types
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -11,7 +12,6 @@ from rich.console import Console
 
 from ...core.database import Database
 from ...core.scraper import Scraper
-from ...utils.date_utils import parse_date_input
 from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -21,7 +21,7 @@ console = Console()
 shutdown_requested = False
 
 
-def signal_handler(signum, frame):
+def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     """Handle shutdown signals gracefully."""
     global shutdown_requested
     shutdown_requested = True
@@ -57,13 +57,13 @@ def signal_handler(signum, frame):
 )
 @click.pass_context
 def monitor(
-    ctx,
+    ctx: click.Context,
     interval: int,
     sport: Optional[str],
     location: Optional[str],
     days_ahead: int,
     quiet: bool,
-):
+) -> None:
     """Run continuous background monitoring of court availability.
 
     This command polls the court reservation system at regular intervals and
@@ -110,7 +110,9 @@ def monitor(
     if not quiet:
         console.print(f"[blue]{start_msg}[/blue]")
 
-    logger.info(f"Monitor started - {filter_str}, interval={interval}min, days={days_ahead}")
+    logger.info(
+        f"Monitor started - {filter_str}, interval={interval}min, days={days_ahead}"
+    )
 
     db = Database()
     scraper = Scraper()
@@ -122,12 +124,12 @@ def monitor(
             poll_count += 1
             poll_start = datetime.now()
 
-            logger.info(f"Poll #{poll_count} starting at {poll_start.strftime('%Y-%m-%d %H:%M:%S')}")
+            poll_time = poll_start.strftime("%Y-%m-%d %H:%M:%S")
+            logger.info(f"Poll #{poll_count} starting at {poll_time}")
 
             if not quiet:
-                console.print(
-                    f"\n[dim]Poll #{poll_count} - {poll_start.strftime('%H:%M:%S')}[/dim]"
-                )
+                poll_hms = poll_start.strftime("%H:%M:%S")
+                console.print(f"\n[dim]Poll #{poll_count} - {poll_hms}[/dim]")
 
             # Calculate dates to monitor
             dates_to_monitor = []
@@ -141,13 +143,13 @@ def monitor(
                 try:
                     logger.debug(f"Fetching courts for {target_date}, sport={sport}")
 
-                    courts = scraper.fetch_courts(
-                        date=target_date, sport_filter=sport
-                    )
+                    courts = scraper.fetch_courts(date=target_date, sport_filter=sport)
 
                     # Filter by location if specified
                     if location and courts:
-                        courts = [c for c in courts if location.lower() in c.location.lower()]
+                        courts = [
+                            c for c in courts if location.lower() in c.location.lower()
+                        ]
 
                     if courts:
                         inserted = db.insert_courts(courts)
@@ -155,17 +157,22 @@ def monitor(
                         total_courts_saved += inserted
 
                         logger.info(
-                            f"  {target_date}: {len(courts)} courts fetched, {inserted} saved"
+                            f"  {target_date}: {len(courts)} courts "
+                            f"fetched, {inserted} saved"
                         )
 
                         if not quiet:
                             console.print(
-                                f"  [green]✓[/green] {target_date}: {len(courts)} courts, {inserted} saved"
+                                f"  [green]✓[/green] {target_date}: "
+                                f"{len(courts)} courts, "
+                                f"{inserted} saved"
                             )
                     else:
                         logger.warning(f"  {target_date}: No courts retrieved")
                         if not quiet:
-                            console.print(f"  [yellow]⚠[/yellow] {target_date}: No data")
+                            console.print(
+                                f"  [yellow]⚠[/yellow] {target_date}: No data"
+                            )
 
                 except Exception as e:
                     logger.error(f"Error fetching {target_date}: {e}", exc_info=True)
@@ -175,7 +182,8 @@ def monitor(
             # Poll summary
             poll_duration = (datetime.now() - poll_start).total_seconds()
             logger.info(
-                f"Poll #{poll_count} complete - {courts_this_poll} courts in {poll_duration:.1f}s"
+                f"Poll #{poll_count} complete - "
+                f"{courts_this_poll} courts in {poll_duration:.1f}s"
             )
 
             if not quiet:
@@ -190,7 +198,9 @@ def monitor(
                 sleep_time = (next_poll - datetime.now()).total_seconds()
 
                 if sleep_time > 0:
-                    logger.debug(f"Sleeping for {sleep_time:.0f} seconds until next poll")
+                    logger.debug(
+                        f"Sleeping for {sleep_time:.0f} seconds until next poll"
+                    )
                     if not quiet:
                         next_time = next_poll.strftime("%H:%M:%S")
                         console.print(f"[dim]  Next poll at {next_time}...[/dim]")
@@ -201,7 +211,8 @@ def monitor(
                         sleep_time -= 1
                 else:
                     logger.warning(
-                        f"Poll took longer than interval ({poll_duration:.1f}s > {interval_seconds}s)"
+                        f"Poll took longer than interval "
+                        f"({poll_duration:.1f}s > {interval_seconds}s)"
                     )
 
     except KeyboardInterrupt:
@@ -227,5 +238,7 @@ def monitor(
         if not quiet:
             console.print(f"[blue]{summary_msg}[/blue]")
 
-        logger.info(f"Monitor stopped - {poll_count} polls, {total_courts_saved} records saved")
+        logger.info(
+            f"Monitor stopped - {poll_count} polls, {total_courts_saved} records saved"
+        )
         logger.info("Monitor shutdown complete")

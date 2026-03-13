@@ -13,7 +13,7 @@ console = Console()
 @click.command()
 @click.option("--days", default=7, help="Remove data older than N days")
 @click.pass_context
-def cleanup(ctx, days: int):
+def cleanup(ctx: click.Context, days: int) -> None:
     """Clean up old court data."""
     logger.info(f"Starting cleanup of data older than {days} days")
 
@@ -35,5 +35,6 @@ def cleanup(ctx, days: int):
     logger.debug(f"Courts remaining: {total_after}")
 
     console.print(
-        f"[green]Cleaned up data older than {days} days. Removed {removed_count} records.[/green]"
+        f"[green]Cleaned up data older than {days} days."
+        f" Removed {removed_count} records.[/green]"
     )

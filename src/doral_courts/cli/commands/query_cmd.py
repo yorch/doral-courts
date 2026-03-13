@@ -20,7 +20,7 @@ console = Console()
 @click.command(name="query")
 @click.argument("query_name")
 @click.pass_context
-def query(ctx, query_name: str):
+def query(ctx: click.Context, query_name: str) -> None:
     """
     Run a saved query by name.
 
@@ -52,9 +52,7 @@ def query(ctx, query_name: str):
 
     if not query_params:
         console.print(f"[red]Query '{query_name}' not found[/red]")
-        console.print(
-            "[blue]Available queries:[/blue]"
-        )
+        console.print("[blue]Available queries:[/blue]")
 
         # Show available queries
         all_queries = config.get_queries()
@@ -70,9 +68,7 @@ def query(ctx, query_name: str):
             console.print(table)
         else:
             console.print("[yellow]No saved queries configured[/yellow]")
-            console.print(
-                "[dim]Edit ~/.doral-courts/config.yaml to add queries[/dim]"
-            )
+            console.print("[dim]Edit ~/.doral-courts/config.yaml to add queries[/dim]")
 
         return
 
@@ -138,7 +134,7 @@ def query(ctx, query_name: str):
                     json_path = save_json_data(
                         courts, f"_query_{query_name}", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:
@@ -160,7 +156,8 @@ def query(ctx, query_name: str):
             if court.sport_type.lower() == sport.lower()
         ]
         logger.debug(
-            f"Applied sport filter '{sport}': {len(courts)} -> {len(filtered_courts)} courts"
+            f"Applied sport filter '{sport}': "
+            f"{len(courts)} -> {len(filtered_courts)} courts"
         )
 
     if status:

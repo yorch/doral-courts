@@ -13,7 +13,7 @@ console = Console()
 
 @click.command()
 @click.pass_context
-def stats(ctx):
+def stats(ctx: click.Context) -> None:
     """
     Show database statistics.
 
@@ -58,8 +58,8 @@ def stats(ctx):
 
     # Create stats panel
     stats_text = f"""
-Total Courts: {stats_data['total_courts']}
-Last Updated: {stats_data['last_updated'] or 'Never'}
+Total Courts: {stats_data["total_courts"]}
+Last Updated: {stats_data["last_updated"] or "Never"}
 
 Sport Breakdown:
 """

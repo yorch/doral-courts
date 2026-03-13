@@ -36,7 +36,10 @@ console = Console()
 )
 @click.option(
     "--day-of-week",
-    type=click.Choice(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"], case_sensitive=False),
+    type=click.Choice(
+        ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+        case_sensitive=False,
+    ),
     help="Filter by day of week",
 )
 @click.option(
@@ -49,7 +52,10 @@ console = Console()
     "--mode",
     type=click.Choice(["velocity", "availability", "summary"], case_sensitive=False),
     default="summary",
-    help="Analysis mode: velocity (booking speed), availability (patterns), summary (both)",
+    help=(
+        "Analysis mode: velocity (booking speed),"
+        " availability (patterns), summary (both)"
+    ),
 )
 def analyze(
     sport: Optional[str],
@@ -59,7 +65,7 @@ def analyze(
     day_of_week: Optional[str],
     days: int,
     mode: str,
-):
+) -> None:
     """Analyze court booking patterns and velocity.
 
     This command analyzes historical data to understand booking patterns:
@@ -72,7 +78,8 @@ def analyze(
         doral-courts analyze --sport pickleball --mode velocity
 
         # See Friday 8am patterns for DLP
-        doral-courts analyze --location "Doral Legacy Park" --time-slot "8:00 am" --day-of-week Friday
+        doral-courts analyze --location "Doral Legacy Park" \\
+            --time-slot "8:00 am" --day-of-week Friday
 
         # Full summary for specific court
         doral-courts analyze --court "DLP Tennis Court 1" --mode summary
@@ -112,8 +119,10 @@ def analyze(
 
     description = " ".join(desc_parts) if desc_parts else "All courts"
 
-    console.print(f"\n[bold]📊 Court Booking Analysis[/bold]")
-    console.print(f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}")
+    console.print("\n[bold]📊 Court Booking Analysis[/bold]")
+    console.print(
+        f"Period: {start_date.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')}"
+    )
     console.print(f"Scope: {description}\n")
 
     if mode in ["velocity", "summary"]:
@@ -134,7 +143,7 @@ def _analyze_booking_velocity(
     end_date: datetime,
     time_slot_filter: Optional[str],
     day_of_week_filter: Optional[str],
-):
+) -> None:
     """Analyze how quickly courts get booked after becoming available."""
 
     console.print("[bold cyan]🚀 Booking Velocity Analysis[/bold cyan]\n")
@@ -154,16 +163,20 @@ def _analyze_booking_velocity(
         WHERE {filter_clause}
         AND ts.date BETWEEN ? AND ?
         ORDER BY c.name, ts.date, ts.start_time, ts.last_updated
-    """
+    """  # noqa: S608
 
     conn = sqlite3.connect(db.db_path)
     cursor = conn.cursor()
-    cursor.execute(query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y")))
+    cursor.execute(
+        query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
+    )
     rows = cursor.fetchall()
 
     if not rows:
         console.print("[yellow]No time slot data available for analysis.[/yellow]")
-        console.print("[dim]💡 Run 'doral-courts monitor' to collect historical data[/dim]\n")
+        console.print(
+            "[dim]💡 Run 'doral-courts monitor' to collect historical data[/dim]\n"
+        )
         return
 
     # Track booking transitions: Available → Unavailable
@@ -187,13 +200,15 @@ def _analyze_booking_velocity(
             continue
 
         key = (court_name, date, start_time)
-        booking_events[key].append({
-            "status": status,
-            "timestamp": last_updated,
-            "location": location,
-            "sport": sport,
-            "day_of_week": day_name,
-        })
+        booking_events[key].append(
+            {
+                "status": status,
+                "timestamp": last_updated,
+                "location": location,
+                "sport": sport,
+                "day_of_week": day_name,
+            }
+        )
 
     # Calculate booking velocities
     velocities = []
@@ -219,26 +234,38 @@ def _analyze_booking_velocity(
         # Calculate velocity if we have both states
         if first_available and first_unavailable:
             try:
-                time_available = datetime.strptime(first_available["timestamp"], "%Y-%m-%d %H:%M:%S.%f")
+                time_available = datetime.strptime(
+                    first_available["timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                )
             except ValueError:
-                time_available = datetime.strptime(first_available["timestamp"], "%Y-%m-%d %H:%M:%S")
+                time_available = datetime.strptime(
+                    first_available["timestamp"], "%Y-%m-%d %H:%M:%S"
+                )
 
             try:
-                time_booked = datetime.strptime(first_unavailable["timestamp"], "%Y-%m-%d %H:%M:%S.%f")
+                time_booked = datetime.strptime(
+                    first_unavailable["timestamp"], "%Y-%m-%d %H:%M:%S.%f"
+                )
             except ValueError:
-                time_booked = datetime.strptime(first_unavailable["timestamp"], "%Y-%m-%d %H:%M:%S")
+                time_booked = datetime.strptime(
+                    first_unavailable["timestamp"], "%Y-%m-%d %H:%M:%S"
+                )
 
-            booking_duration = (time_booked - time_available).total_seconds() / 60  # minutes
+            booking_duration = (
+                time_booked - time_available
+            ).total_seconds() / 60  # minutes
 
-            velocities.append({
-                "court": court,
-                "date": date,
-                "time_slot": time,
-                "duration_minutes": booking_duration,
-                "location": first_available["location"],
-                "sport": first_available["sport"],
-                "day_of_week": first_available["day_of_week"],
-            })
+            velocities.append(
+                {
+                    "court": court,
+                    "date": date,
+                    "time_slot": time,
+                    "duration_minutes": booking_duration,
+                    "location": first_available["location"],
+                    "sport": first_available["sport"],
+                    "day_of_week": first_available["day_of_week"],
+                }
+            )
 
     if not velocities:
         console.print("[yellow]No booking velocity data found.[/yellow]")
@@ -256,10 +283,18 @@ def _analyze_booking_velocity(
     console.print(f"[green]Found {len(velocities)} booking transitions[/green]\n")
 
     console.print(f"⏱️  Average booking time: [bold]{avg_velocity:.1f} minutes[/bold]")
-    console.print(f"⚡ Fastest booking: [bold]{fastest['duration_minutes']:.1f} minutes[/bold]")
-    console.print(f"   {fastest['court']} on {fastest['date']} at {fastest['time_slot']}")
-    console.print(f"🐌 Slowest booking: [bold]{slowest['duration_minutes']:.1f} minutes[/bold]")
-    console.print(f"   {slowest['court']} on {slowest['date']} at {slowest['time_slot']}\n")
+    console.print(
+        f"⚡ Fastest booking: [bold]{fastest['duration_minutes']:.1f} minutes[/bold]"
+    )
+    console.print(
+        f"   {fastest['court']} on {fastest['date']} at {fastest['time_slot']}"
+    )
+    console.print(
+        f"🐌 Slowest booking: [bold]{slowest['duration_minutes']:.1f} minutes[/bold]"
+    )
+    console.print(
+        f"   {slowest['court']} on {slowest['date']} at {slowest['time_slot']}\n"
+    )
 
     # Top 10 fastest bookings
     console.print("[bold]⚡ Top 10 Fastest Bookings:[/bold]")
@@ -295,7 +330,7 @@ def _analyze_availability_patterns(
     start_date: datetime,
     end_date: datetime,
     day_of_week_filter: Optional[str],
-):
+) -> None:
     """Analyze availability patterns by day of week and time."""
 
     console.print("[bold cyan]📅 Availability Patterns[/bold cyan]\n")
@@ -313,11 +348,13 @@ def _analyze_availability_patterns(
         WHERE {filter_clause}
         AND date BETWEEN ? AND ?
         ORDER BY date
-    """
+    """  # noqa: S608
 
     conn = sqlite3.connect(db.db_path)
     cursor = conn.cursor()
-    cursor.execute(query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y")))
+    cursor.execute(
+        query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
+    )
     rows = cursor.fetchall()
 
     if not rows:
@@ -355,7 +392,15 @@ def _analyze_availability_patterns(
         table.add_column("Availability %", style="blue", justify="right")
 
         # Sort by day of week
-        day_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        day_order = [
+            "Monday",
+            "Tuesday",
+            "Wednesday",
+            "Thursday",
+            "Friday",
+            "Saturday",
+            "Sunday",
+        ]
         for day in day_order:
             if day in day_stats:
                 stats = day_stats[day]

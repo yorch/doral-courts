@@ -139,7 +139,8 @@ class CourtAvailabilityHTMLExtractor:
         # Debug: let's examine the HTML structure
         logger.debug("HTML title: %s", soup.title.string if soup.title else "No title")
 
-        # Look for ALL tables with court data (there are multiple tables, each with the same ID)
+        # Look for ALL tables with court data
+        # (there are multiple tables, each with the same ID)
         court_tables = soup.find_all("table", id="frwebsearch_output_table")
         if not court_tables:
             logger.warning("Could not find any frwebsearch_output_table")
@@ -287,7 +288,7 @@ class CourtAvailabilityHTMLExtractor:
         logger.info("Parsed %d courts from HTML", len(courts))
         return courts
 
-    def _extract_time_slots(self, court_row) -> List[TimeSlot]:
+    def _extract_time_slots(self, court_row: object) -> List[TimeSlot]:
         """
         Extract time slots from the cart-blocks section following a court row.
 

@@ -1,4 +1,3 @@
-from datetime import datetime, time
 from typing import List, Optional
 
 import cloudscraper
@@ -38,7 +37,7 @@ class Scraper:
         courts = scraper.fetch_courts(date="07/12/2025", sport_filter="tennis")
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Initialize scraper with cloudscraper session and configuration.
 
@@ -66,7 +65,13 @@ class Scraper:
         # Additional headers for better compatibility (let cloudscraper handle encoding)
         self.session.headers.update(
             {
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "Accept": (
+                    "text/html,application/xhtml+xml,"
+                    "application/xml;q=0.9,"
+                    "image/avif,image/webp,image/apng,"
+                    "*/*;q=0.8,"
+                    "application/signed-exchange;v=b3;q=0.7"
+                ),
                 "Accept-Language": "en-US,en;q=0.9",
                 "Cache-Control": "max-age=0",
                 "Upgrade-Insecure-Requests": "1",
@@ -81,7 +86,7 @@ class Scraper:
             "Initialized Scraper with cloudscraper and base URL: %s", self.base_url
         )
 
-    def _initialize_session(self):
+    def _initialize_session(self) -> bool:
         """
         Initialize session by visiting the home page to get cookies and tokens.
 
@@ -119,7 +124,8 @@ class Scraper:
 
             logger.debug("Session cookies: %s", list(self.session.cookies.keys()))
 
-            # Consider any non-error status as success since cloudscraper handles challenges
+            # Consider any non-error status as success
+            # since cloudscraper handles challenges
             if response.status_code < 500:
                 logger.info("Session initialized successfully with cloudscraper")
                 return True
@@ -164,8 +170,11 @@ class Scraper:
             return ""
 
     def _build_search_params(
-        self, date: str = None, begin_time: str = "08:00 am", page: int = 1
-    ) -> dict:
+        self,
+        date: Optional[str] = None,
+        begin_time: str = "08:00 am",
+        page: int = 1,
+    ) -> dict[str, object]:
         """Build search parameters for the court availability request."""
         if not date:
             from datetime import datetime
@@ -212,15 +221,21 @@ class Scraper:
         logger.debug("Built search params with %d parameters", len(params))
         return params
 
-    def fetch_courts(self, date: str = None, sport_filter: str = None) -> List[Court]:
+    def fetch_courts(
+        self,
+        date: Optional[str] = None,
+        sport_filter: Optional[str] = None,
+    ) -> List[Court]:
         """Fetch court availability data from the website."""
         courts, _ = self.fetch_courts_with_html(date, sport_filter)
         return courts
 
     def fetch_courts_with_html(
-        self, date: str = None, sport_filter: str = None
+        self,
+        date: Optional[str] = None,
+        sport_filter: Optional[str] = None,
     ) -> tuple[List[Court], str]:
-        """Fetch court availability data from the website and return both courts and HTML."""
+        """Fetch court availability data and return courts and HTML."""
         logger.info("Starting court data fetch from website")
         logger.debug(
             "Fetch parameters - Date: %s, Sport filter: %s", date, sport_filter
@@ -285,7 +300,7 @@ class Scraper:
                         except Exception as e:
                             logger.debug("Could not save HTML debug file: %s", e)
 
-                    # Use response.text instead of response.content for better encoding handling
+                    # Use response.text for better encoding handling
                     soup = BeautifulSoup(html_content, "html.parser")
                     courts = self.html_extractor.parse_court_data(soup)
 
@@ -297,7 +312,7 @@ class Scraper:
 
                     logger.debug("Found %d courts on page %d", len(courts), page)
 
-                    # Check for duplicates - if this page returns the same courts as before, stop
+                    # Check for duplicates — stop if same courts
                     existing_court_names = set(court.name for court in all_courts)
                     new_court_names = set(court.name for court in courts)
                     duplicate_count = len(
@@ -312,10 +327,12 @@ class Scraper:
                             (duplicate_count / len(courts)) * 100,
                         )
 
-                        # If more than 50% of courts are duplicates, likely we're getting repeated data
+                        # If >50% duplicates, likely repeated data
                         if duplicate_count / len(courts) > 0.5:
                             logger.warning(
-                                "Page %d contains mostly duplicate data (%.1f%%), stopping pagination",
+                                "Page %d contains mostly "
+                                "duplicate data (%.1f%%), "
+                                "stopping pagination",
                                 page,
                                 (duplicate_count / len(courts)) * 100,
                             )
@@ -338,7 +355,8 @@ class Scraper:
                         )
                     else:
                         logger.debug(
-                            "No new courts found on page %d, all were duplicates", page
+                            "No new courts found on page %d, all were duplicates",
+                            page,
                         )
 
                     # Check if there's a next page
@@ -363,7 +381,7 @@ class Scraper:
                         logger.debug(
                             "Found next page button for page %s", next_page_value
                         )
-                    # If no direct next page button but there's a last page button, check if we can continue
+                    # No direct next page button — check last page
                     elif last_page_button:
                         last_page_value = last_page_button.get(
                             "data-click-set-value", "1"
@@ -384,7 +402,7 @@ class Scraper:
                                 )
                         except (ValueError, TypeError):
                             logger.debug(
-                                "Could not determine last page number, stopping pagination"
+                                "Could not determine last page, stopping pagination"
                             )
                             break
 
@@ -392,7 +410,8 @@ class Scraper:
 
                 elif response.status_code == 403:
                     logger.error(
-                        "Received 403 Forbidden - website is blocking automated requests"
+                        "Received 403 Forbidden - website is"
+                        " blocking automated requests"
                     )
                     logger.error(
                         "The website has anti-bot protection that prevents access"
@@ -442,6 +461,6 @@ class Scraper:
             return str(self.last_request_urls[-1])
         return self.base_url
 
-    def get_all_request_urls(self) -> list:
+    def get_all_request_urls(self) -> list[str]:
         """Get all request URLs from the last fetch operation."""
         return [str(url) for url in self.last_request_urls]

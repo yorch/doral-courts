@@ -3,7 +3,7 @@ import sys
 from typing import Optional
 
 
-def setup_logging(verbose: bool = False, log_file: Optional[str] = None):
+def setup_logging(verbose: bool = False, log_file: Optional[str] = None) -> None:
     """
     Configure logging for the application.
 
