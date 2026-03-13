@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List, Optional
 
 from ..utils.config import Config
@@ -36,7 +35,9 @@ class Database:
         historical_courts = db.get_courts(sport_type="Tennis")
     """
 
-    def __init__(self, db_path: Optional[str] = None, adapter: Optional[DatabaseAdapter] = None):
+    def __init__(
+        self, db_path: Optional[str] = None, adapter: Optional[DatabaseAdapter] = None
+    ):
         """
         Initialize database connection and setup schema.
 
@@ -50,11 +51,12 @@ class Database:
         if adapter:
             # Use provided adapter (for testing)
             self.adapter = adapter
-            self.db_path = getattr(adapter, 'db_path', None)
+            self.db_path = getattr(adapter, "db_path", None)
             logger.debug("Using provided database adapter")
         elif db_path:
             # Legacy mode: SQLite with specific path
             from .db_adapter import SQLiteAdapter
+
             self.adapter = SQLiteAdapter(db_path=db_path)
             self.db_path = db_path
             logger.debug("Using SQLite adapter with path: %s", db_path)
@@ -63,8 +65,10 @@ class Database:
             config = Config()
             db_config = config.get_database_config()
             self.adapter = create_adapter(db_config)
-            self.db_path = getattr(self.adapter, 'db_path', None)
-            logger.debug("Database adapter created from config: %s", db_config.get('type'))
+            self.db_path = getattr(self.adapter, "db_path", None)
+            logger.debug(
+                "Database adapter created from config: %s", db_config.get("type")
+            )
 
         self.init_database()
 
@@ -94,11 +98,8 @@ class Database:
 
         conn = self.adapter.connect()
         try:
-            # Determine database-specific syntax
-            placeholder = self.adapter.get_placeholder()
-
             # Use different primary key syntax for SQLite vs PostgreSQL
-            if hasattr(self.adapter, 'db_path'):  # SQLite
+            if hasattr(self.adapter, "db_path"):  # SQLite
                 id_column = "id INTEGER PRIMARY KEY AUTOINCREMENT"
             else:  # PostgreSQL
                 id_column = "id SERIAL PRIMARY KEY"
@@ -120,20 +121,20 @@ class Database:
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(name, date, time_slot)
                 )
-            """
+            """,
             )
             logger.debug("Created courts table")
 
             # Migration: Check if surface_type column exists and rename it to capacity
             # This is SQLite-specific, skip for PostgreSQL
-            if hasattr(self.adapter, 'db_path'):  # SQLite only
+            if hasattr(self.adapter, "db_path"):  # SQLite only
                 cursor = self.adapter.execute(conn, "PRAGMA table_info(courts)")
                 columns = [column[1] for column in self.adapter.fetchall(cursor)]
                 if "surface_type" in columns and "capacity" not in columns:
                     logger.info("Migrating database: renaming surface_type to capacity")
                     self.adapter.execute(
                         conn,
-                        "ALTER TABLE courts RENAME COLUMN surface_type TO capacity"
+                        "ALTER TABLE courts RENAME COLUMN surface_type TO capacity",
                     )
 
             # Create time_slots table
@@ -151,7 +152,7 @@ class Database:
                     FOREIGN KEY (court_id) REFERENCES courts (id) ON DELETE CASCADE,
                     UNIQUE(court_id, start_time, end_time, date)
                 )
-            """
+            """,
             )
             logger.debug("Created time_slots table")
 
@@ -161,7 +162,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_sport_type
                 ON courts(sport_type)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -169,7 +170,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_availability
                 ON courts(availability_status)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -177,7 +178,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_date
                 ON courts(date)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -185,7 +186,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_court_id
                 ON time_slots(court_id)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -193,7 +194,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_date
                 ON time_slots(date)
-            """
+            """,
             )
 
             self.adapter.execute(
@@ -201,7 +202,7 @@ class Database:
                 """
                 CREATE INDEX IF NOT EXISTS idx_time_slots_status
                 ON time_slots(status)
-            """
+            """,
             )
             logger.debug("Created database indexes")
 
@@ -256,7 +257,7 @@ class Database:
                     # Insert or update the main court record
                     # Note: INSERT OR REPLACE is SQLite-specific
                     # For PostgreSQL, we'll use INSERT ... ON CONFLICT
-                    if hasattr(self.adapter, 'db_path'):  # SQLite
+                    if hasattr(self.adapter, "db_path"):  # SQLite
                         cursor = self.adapter.execute(
                             conn,
                             f"""
@@ -414,7 +415,9 @@ class Database:
                 court_id = row[0]
 
                 # Load time slots for this court
-                time_slots = self._load_time_slots(court_id, row[6])  # row[6] is the date
+                time_slots = self._load_time_slots(
+                    court_id, row[6]
+                )  # row[6] is the date
 
                 court = Court(
                     name=row[1],
@@ -539,15 +542,14 @@ class Database:
             logger.debug("Total courts in database: %d", total_courts)
 
             cursor = self.adapter.execute(
-                conn,
-                "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
+                conn, "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
             )
             sport_counts = dict(self.adapter.fetchall(cursor))
             logger.debug("Sport breakdown: %s", sport_counts)
 
             cursor = self.adapter.execute(
                 conn,
-                "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status"
+                "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status",
             )
             availability_counts = dict(self.adapter.fetchall(cursor))
             logger.debug("Availability breakdown: %s", availability_counts)

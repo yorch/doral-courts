@@ -18,16 +18,12 @@ class DatabaseAdapter(ABC):
         pass
 
     @abstractmethod
-    def execute(
-        self, conn: Any, query: str, params: Optional[Tuple] = None
-    ) -> Any:
+    def execute(self, conn: Any, query: str, params: Optional[Tuple] = None) -> Any:
         """Execute a query and return cursor."""
         pass
 
     @abstractmethod
-    def executemany(
-        self, conn: Any, query: str, params_list: List[Tuple]
-    ) -> Any:
+    def executemany(self, conn: Any, query: str, params_list: List[Tuple]) -> Any:
         """Execute a query multiple times with different parameters."""
         pass
 
@@ -139,11 +135,11 @@ class PostgreSQLAdapter(DatabaseAdapter):
             import psycopg2
 
             self.psycopg2 = psycopg2
-        except ImportError:
+        except ImportError as err:
             raise ImportError(
                 "psycopg2-binary is required for PostgreSQL support. "
                 "Install it with: uv pip install doral-courts[postgresql]"
-            )
+            ) from err
 
         self.host = host
         self.port = port
@@ -151,9 +147,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
         self.user = user
         self.password = password
 
-        logger.debug(
-            f"PostgreSQL adapter initialized: {user}@{host}:{port}/{database}"
-        )
+        logger.debug(f"PostgreSQL adapter initialized: {user}@{host}:{port}/{database}")
 
     def connect(self) -> Any:
         """Create PostgreSQL connection."""
@@ -165,9 +159,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             password=self.password,
         )
 
-    def execute(
-        self, conn: Any, query: str, params: Optional[Tuple] = None
-    ) -> Any:
+    def execute(self, conn: Any, query: str, params: Optional[Tuple] = None) -> Any:
         """Execute query on PostgreSQL connection."""
         cursor = conn.cursor()
         if params:
@@ -176,9 +168,7 @@ class PostgreSQLAdapter(DatabaseAdapter):
             cursor.execute(query)
         return cursor
 
-    def executemany(
-        self, conn: Any, query: str, params_list: List[Tuple]
-    ) -> Any:
+    def executemany(self, conn: Any, query: str, params_list: List[Tuple]) -> Any:
         """Execute query multiple times on PostgreSQL connection."""
         cursor = conn.cursor()
         cursor.executemany(query, params_list)

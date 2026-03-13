@@ -79,7 +79,7 @@ def list_courts(ctx, sport: Optional[str], date: Optional[str]):
                     json_path = save_json_data(
                         courts, "_list_courts", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

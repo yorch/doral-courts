@@ -11,7 +11,6 @@ from rich.console import Console
 
 from ...core.database import Database
 from ...core.scraper import Scraper
-from ...utils.date_utils import parse_date_input
 from ...utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -110,7 +109,9 @@ def monitor(
     if not quiet:
         console.print(f"[blue]{start_msg}[/blue]")
 
-    logger.info(f"Monitor started - {filter_str}, interval={interval}min, days={days_ahead}")
+    logger.info(
+        f"Monitor started - {filter_str}, interval={interval}min, days={days_ahead}"
+    )
 
     db = Database()
     scraper = Scraper()
@@ -122,7 +123,9 @@ def monitor(
             poll_count += 1
             poll_start = datetime.now()
 
-            logger.info(f"Poll #{poll_count} starting at {poll_start.strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(
+                f"Poll #{poll_count} starting at {poll_start.strftime('%Y-%m-%d %H:%M:%S')}"
+            )
 
             if not quiet:
                 console.print(
@@ -141,13 +144,13 @@ def monitor(
                 try:
                     logger.debug(f"Fetching courts for {target_date}, sport={sport}")
 
-                    courts = scraper.fetch_courts(
-                        date=target_date, sport_filter=sport
-                    )
+                    courts = scraper.fetch_courts(date=target_date, sport_filter=sport)
 
                     # Filter by location if specified
                     if location and courts:
-                        courts = [c for c in courts if location.lower() in c.location.lower()]
+                        courts = [
+                            c for c in courts if location.lower() in c.location.lower()
+                        ]
 
                     if courts:
                         inserted = db.insert_courts(courts)
@@ -165,7 +168,9 @@ def monitor(
                     else:
                         logger.warning(f"  {target_date}: No courts retrieved")
                         if not quiet:
-                            console.print(f"  [yellow]⚠[/yellow] {target_date}: No data")
+                            console.print(
+                                f"  [yellow]⚠[/yellow] {target_date}: No data"
+                            )
 
                 except Exception as e:
                     logger.error(f"Error fetching {target_date}: {e}", exc_info=True)
@@ -190,7 +195,9 @@ def monitor(
                 sleep_time = (next_poll - datetime.now()).total_seconds()
 
                 if sleep_time > 0:
-                    logger.debug(f"Sleeping for {sleep_time:.0f} seconds until next poll")
+                    logger.debug(
+                        f"Sleeping for {sleep_time:.0f} seconds until next poll"
+                    )
                     if not quiet:
                         next_time = next_poll.strftime("%H:%M:%S")
                         console.print(f"[dim]  Next poll at {next_time}...[/dim]")
@@ -227,5 +234,7 @@ def monitor(
         if not quiet:
             console.print(f"[blue]{summary_msg}[/blue]")
 
-        logger.info(f"Monitor stopped - {poll_count} polls, {total_courts_saved} records saved")
+        logger.info(
+            f"Monitor stopped - {poll_count} polls, {total_courts_saved} records saved"
+        )
         logger.info("Monitor shutdown complete")

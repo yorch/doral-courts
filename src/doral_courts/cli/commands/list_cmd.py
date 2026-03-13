@@ -83,8 +83,6 @@ def list_courts(
         Always fetches fresh data from the website. For historical data,
         use the 'history' command instead.
     """
-    verbose = ctx.obj.get("verbose", False)
-
     # Parse date input
     try:
         parsed_date = parse_date_input(date)
@@ -136,7 +134,7 @@ def list_courts(
                     json_path = save_json_data(
                         courts, "_list", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

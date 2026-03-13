@@ -39,10 +39,10 @@ def parse_date_input(date_input: Optional[str] = None) -> str:
         # Handle MM/DD/YYYY format - validate it
         try:
             target_date = datetime.strptime(date_input, "%m/%d/%Y")
-        except ValueError:
+        except ValueError as err:
             raise ValueError(
                 f"Invalid date format: {date_input}. Use MM/DD/YYYY format."
-            )
+            ) from err
     else:
         # Try to parse other common formats
         common_formats = [

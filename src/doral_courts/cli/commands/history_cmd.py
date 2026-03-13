@@ -6,8 +6,7 @@ import click
 from rich.console import Console
 
 from ...core.database import Database
-from ...display.detailed import (display_detailed_court_data,
-                                 display_time_slots_summary)
+from ...display.detailed import display_detailed_court_data, display_time_slots_summary
 from ...display.tables import display_courts_table
 from ...utils.date_utils import parse_date_input
 from ...utils.logger import get_logger

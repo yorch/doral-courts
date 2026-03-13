@@ -52,9 +52,7 @@ def query(ctx, query_name: str):
 
     if not query_params:
         console.print(f"[red]Query '{query_name}' not found[/red]")
-        console.print(
-            "[blue]Available queries:[/blue]"
-        )
+        console.print("[blue]Available queries:[/blue]")
 
         # Show available queries
         all_queries = config.get_queries()
@@ -70,9 +68,7 @@ def query(ctx, query_name: str):
             console.print(table)
         else:
             console.print("[yellow]No saved queries configured[/yellow]")
-            console.print(
-                "[dim]Edit ~/.doral-courts/config.yaml to add queries[/dim]"
-            )
+            console.print("[dim]Edit ~/.doral-courts/config.yaml to add queries[/dim]")
 
         return
 
@@ -138,7 +134,7 @@ def query(ctx, query_name: str):
                     json_path = save_json_data(
                         courts, f"_query_{query_name}", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

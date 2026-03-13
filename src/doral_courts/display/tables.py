@@ -157,15 +157,15 @@ def display_available_slots_table(
         location_breakdown[location] += 1
 
     # Display summary
-    console.print(f"\n[bold cyan]📊 Summary:[/bold cyan]")
+    console.print("\n[bold cyan]📊 Summary:[/bold cyan]")
     console.print(f"  • Total Available Slots: [green]{total_slots}[/green]")
     console.print(f"  • Courts with Availability: [green]{unique_courts}[/green]")
 
-    console.print(f"\n[bold magenta]🎾 By Sport:[/bold magenta]")
+    console.print("\n[bold magenta]🎾 By Sport:[/bold magenta]")
     for sport, count in sports_breakdown.items():
         console.print(f"  • {sport}: [green]{count}[/green] slots")
 
-    console.print(f"\n[bold yellow]🏢 By Location:[/bold yellow]")
+    console.print("\n[bold yellow]🏢 By Location:[/bold yellow]")
     for location, count in location_breakdown.items():
         console.print(f"  • {location}: [green]{count}[/green] slots")
 
@@ -201,10 +201,10 @@ def display_available_slots_table(
             slot_data["price"],
         )
 
-    console.print(f"\n[bold green]📋 Detailed Schedule:[/bold green]")
+    console.print("\n[bold green]📋 Detailed Schedule:[/bold green]")
     console.print(table)
 
     # Add helpful footer
     console.print(
-        f"\n[dim]💡 Tip: Use --sport or --location filters to narrow down results[/dim]"
+        "\n[dim]💡 Tip: Use --sport or --location filters to narrow down results[/dim]"
     )

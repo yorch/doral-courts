@@ -4,7 +4,6 @@ from typing import List
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 from ..core.html_extractor import Court
 

@@ -8,8 +8,7 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ...core.database import Database
 from ...core.scraper import Scraper
-from ...display.detailed import (display_detailed_court_data,
-                                 display_time_slots_summary)
+from ...display.detailed import display_detailed_court_data, display_time_slots_summary
 from ...utils.date_utils import parse_date_input
 from ...utils.file_utils import save_html_data, save_json_data
 from ...utils.logger import get_logger
@@ -87,7 +86,7 @@ def data(ctx, mode: str, sport: Optional[str], date: Optional[str]):
                 try:
                     html_path = save_html_data(html_content, "_data")
                     json_path = save_json_data(courts, "_data", actual_url)
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

@@ -82,7 +82,7 @@ def list_available_slots(
                     json_path = save_json_data(
                         courts, "_available_slots", scraper.get_last_request_url()
                     )
-                    console.print(f"[green]Data saved to:[/green]")
+                    console.print("[green]Data saved to:[/green]")
                     console.print(f"  HTML: {html_path}")
                     console.print(f"  JSON: {json_path}")
                 except Exception as e:

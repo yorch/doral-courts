@@ -35,7 +35,7 @@ def display_courts_list(courts: List[Court], sport_filter: Optional[str] = None)
     # Sort court names
     sorted_courts = sorted(court_names)
 
-    console.print(f"\n[bold blue]🏟️  Available Courts[/bold blue]")
+    console.print("\n[bold blue]🏟️  Available Courts[/bold blue]")
     if sport_filter:
         console.print(f"[dim]Filtered by sport: {sport_filter.title()}[/dim]")
     console.print(f"[cyan]Total: {len(sorted_courts)} courts[/cyan]\n")
@@ -82,7 +82,7 @@ def display_locations_list(courts: List[Court], sport_filter: Optional[str] = No
     # Sort locations by name
     sorted_locations = sorted(location_counts.items())
 
-    console.print(f"\n[bold blue]📍 Available Locations[/bold blue]")
+    console.print("\n[bold blue]📍 Available Locations[/bold blue]")
     if sport_filter:
         console.print(f"[dim]Filtered by sport: {sport_filter.title()}[/dim]")
 
