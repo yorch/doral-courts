@@ -1,8 +1,16 @@
 """Main CLI entry point for Doral Courts application."""
 
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as _pkg_version
+
 import click
 
 from ..utils.logger import setup_logging
+
+try:
+    __version__ = _pkg_version("doral-courts")
+except PackageNotFoundError:  # running from source without an installed dist
+    __version__ = "0.2.0"
 from .commands.analyze_cmd import analyze
 from .commands.cleanup_cmd import cleanup
 from .commands.data_cmd import data
@@ -20,7 +28,7 @@ from .commands.watch_cmd import watch
 
 
 @click.group()
-@click.version_option(version="0.1.0")
+@click.version_option(version=__version__)
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose logging")
 @click.option(
     "--save-data", is_flag=True, help="Save retrieved HTML and JSON data to files"

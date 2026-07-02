@@ -25,7 +25,7 @@ def signal_handler(signum: int, frame: types.FrameType | None) -> None:
     """Handle shutdown signals gracefully."""
     global shutdown_requested
     shutdown_requested = True
-    logger.info(f"Received signal {signum}, initiating graceful shutdown...")
+    logger.info("Received signal %s, initiating graceful shutdown...", signum)
 
 
 @click.command()
@@ -111,7 +111,10 @@ def monitor(
         console.print(f"[blue]{start_msg}[/blue]")
 
     logger.info(
-        f"Monitor started - {filter_str}, interval={interval}min, days={days_ahead}"
+        "Monitor started - %s, interval=%smin, days=%s",
+        filter_str,
+        interval,
+        days_ahead,
     )
 
     db = Database()
@@ -125,7 +128,7 @@ def monitor(
             poll_start = datetime.now()
 
             poll_time = poll_start.strftime("%Y-%m-%d %H:%M:%S")
-            logger.info(f"Poll #{poll_count} starting at {poll_time}")
+            logger.info("Poll #%s starting at %s", poll_count, poll_time)
 
             if not quiet:
                 poll_hms = poll_start.strftime("%H:%M:%S")
@@ -141,7 +144,7 @@ def monitor(
             courts_this_poll = 0
             for target_date in dates_to_monitor:
                 try:
-                    logger.debug(f"Fetching courts for {target_date}, sport={sport}")
+                    logger.debug("Fetching courts for %s, sport=%s", target_date, sport)
 
                     courts = scraper.fetch_courts(date=target_date, sport_filter=sport)
 
@@ -157,8 +160,10 @@ def monitor(
                         total_courts_saved += inserted
 
                         logger.info(
-                            f"  {target_date}: {len(courts)} courts "
-                            f"fetched, {inserted} saved"
+                            "  %s: %s courts fetched, %s saved",
+                            target_date,
+                            len(courts),
+                            inserted,
                         )
 
                         if not quiet:
@@ -168,22 +173,24 @@ def monitor(
                                 f"{inserted} saved"
                             )
                     else:
-                        logger.warning(f"  {target_date}: No courts retrieved")
+                        logger.warning("  %s: No courts retrieved", target_date)
                         if not quiet:
                             console.print(
                                 f"  [yellow]⚠[/yellow] {target_date}: No data"
                             )
 
                 except Exception as e:
-                    logger.error(f"Error fetching {target_date}: {e}", exc_info=True)
+                    logger.error("Error fetching %s: %s", target_date, e, exc_info=True)
                     if not quiet:
                         console.print(f"  [red]✗[/red] {target_date}: Error - {e}")
 
             # Poll summary
             poll_duration = (datetime.now() - poll_start).total_seconds()
             logger.info(
-                f"Poll #{poll_count} complete - "
-                f"{courts_this_poll} courts in {poll_duration:.1f}s"
+                "Poll #%s complete - %s courts in %.1fs",
+                poll_count,
+                courts_this_poll,
+                poll_duration,
             )
 
             if not quiet:
@@ -199,7 +206,7 @@ def monitor(
 
                 if sleep_time > 0:
                     logger.debug(
-                        f"Sleeping for {sleep_time:.0f} seconds until next poll"
+                        "Sleeping for %.0f seconds until next poll", sleep_time
                     )
                     if not quiet:
                         next_time = next_poll.strftime("%H:%M:%S")
@@ -211,8 +218,9 @@ def monitor(
                         sleep_time -= 1
                 else:
                     logger.warning(
-                        f"Poll took longer than interval "
-                        f"({poll_duration:.1f}s > {interval_seconds}s)"
+                        "Poll took longer than interval (%.1fs > %ss)",
+                        poll_duration,
+                        interval_seconds,
                     )
 
     except KeyboardInterrupt:
@@ -221,7 +229,7 @@ def monitor(
             console.print("\n[yellow]Monitoring interrupted...[/yellow]")
 
     except Exception as e:
-        logger.error(f"Monitor error: {e}", exc_info=True)
+        logger.error("Monitor error: %s", e, exc_info=True)
         if not quiet:
             console.print(f"\n[red]Monitor error: {e}[/red]")
         sys.exit(1)
@@ -239,6 +247,8 @@ def monitor(
             console.print(f"[blue]{summary_msg}[/blue]")
 
         logger.info(
-            f"Monitor stopped - {poll_count} polls, {total_courts_saved} records saved"
+            "Monitor stopped - %s polls, %s records saved",
+            poll_count,
+            total_courts_saved,
         )
         logger.info("Monitor shutdown complete")

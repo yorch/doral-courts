@@ -43,7 +43,7 @@ def stats(ctx: click.Context) -> None:
     db = Database()
     stats_data = db.get_stats()
 
-    logger.debug(f"Database stats: {stats_data}")
+    logger.debug("Database stats: %s", stats_data)
 
     if stats_data["total_courts"] == 0:
         logger.warning("No data available in database")
@@ -54,7 +54,7 @@ def stats(ctx: click.Context) -> None:
         )
         return
 
-    logger.info(f"Displaying statistics for {stats_data['total_courts']} courts")
+    logger.info("Displaying statistics for %s courts", stats_data["total_courts"])
 
     # Create stats panel
     stats_text = f"""

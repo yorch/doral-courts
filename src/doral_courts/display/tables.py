@@ -6,6 +6,7 @@ from rich.console import Console
 from rich.table import Table
 
 from ..core.html_extractor import Court
+from ..utils.date_utils import time_sort_key
 
 console = Console()
 
@@ -137,8 +138,10 @@ def display_available_slots_table(
         console.print("[dim]All courts may be fully booked for this date.[/dim]")
         return
 
-    # Sort by start time, then by court name
-    available_slots_data.sort(key=lambda x: (x["start_time"], x["court_name"]))
+    # Sort by start time (chronologically, not lexicographically), then court name
+    available_slots_data.sort(
+        key=lambda x: (time_sort_key(x["start_time"]), x["court_name"])
+    )
 
     # Create summary statistics
     total_slots = len(available_slots_data)

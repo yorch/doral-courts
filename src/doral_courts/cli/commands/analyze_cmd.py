@@ -1,6 +1,5 @@
 """Analyze command for booking velocity and pattern analysis."""
 
-import sqlite3
 from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Optional
@@ -89,24 +88,23 @@ def analyze(
     """
     db = Database()
 
-    # analyze connects to SQLite directly (bypassing the adapter), so it only
-    # supports the SQLite backend.
-    if db.adapter.dialect != "sqlite":
-        console.print(
-            "[red]The 'analyze' command only supports the SQLite backend.[/red]"
-        )
-        return
-
-    # Build filters
-    filters = []
+    # Build the WHERE clause with parameterized placeholders (never interpolate
+    # user input into SQL). Queries run through the adapter, so this works on
+    # both SQLite and PostgreSQL.
+    ph = db.adapter.get_placeholder()
+    conditions = []
+    filter_params: list[str] = []
     if sport:
-        filters.append(f"sport_type = '{sport.title()}'")
+        conditions.append(f"sport_type = {ph}")
+        filter_params.append(sport.title())
     if location:
-        filters.append(f"location LIKE '%{location}%'")
+        conditions.append(f"location LIKE {ph}")
+        filter_params.append(f"%{location}%")
     if court:
-        filters.append(f"name = '{court}'")
+        conditions.append(f"name = {ph}")
+        filter_params.append(court)
 
-    filter_clause = " AND ".join(filters) if filters else "1=1"
+    filter_clause = " AND ".join(conditions) if conditions else "1=1"
 
     # Calculate date range
     end_date = datetime.now()
@@ -135,18 +133,25 @@ def analyze(
 
     if mode in ["velocity", "summary"]:
         _analyze_booking_velocity(
-            db, filter_clause, start_date, end_date, time_slot, day_of_week
+            db,
+            filter_clause,
+            filter_params,
+            start_date,
+            end_date,
+            time_slot,
+            day_of_week,
         )
 
     if mode in ["availability", "summary"]:
         _analyze_availability_patterns(
-            db, filter_clause, start_date, end_date, day_of_week
+            db, filter_clause, filter_params, start_date, end_date, day_of_week
         )
 
 
 def _analyze_booking_velocity(
     db: Database,
     filter_clause: str,
+    filter_params: list[str],
     start_date: datetime,
     end_date: datetime,
     time_slot_filter: Optional[str],
@@ -157,6 +162,7 @@ def _analyze_booking_velocity(
     console.print("[bold cyan]🚀 Booking Velocity Analysis[/bold cyan]\n")
 
     # Query time slots data with court info
+    ph = db.adapter.get_placeholder()
     query = f"""
         SELECT
             c.name,
@@ -169,16 +175,24 @@ def _analyze_booking_velocity(
         FROM time_slots ts
         JOIN courts c ON ts.court_id = c.id
         WHERE {filter_clause}
-        AND ts.date BETWEEN ? AND ?
+        AND ts.date BETWEEN {ph} AND {ph}
         ORDER BY c.name, ts.date, ts.start_time, ts.last_updated
     """  # noqa: S608
 
-    conn = sqlite3.connect(str(db.db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
-    )
-    rows = cursor.fetchall()
+    conn = db.adapter.connect()
+    try:
+        cursor = db.adapter.execute(
+            conn,
+            query,
+            (
+                *filter_params,
+                start_date.strftime("%m/%d/%Y"),
+                end_date.strftime("%m/%d/%Y"),
+            ),
+        )
+        rows = db.adapter.fetchall(cursor)
+    finally:
+        db.adapter.close(conn)
 
     if not rows:
         console.print("[yellow]No time slot data available for analysis.[/yellow]")
@@ -335,6 +349,7 @@ def _analyze_booking_velocity(
 def _analyze_availability_patterns(
     db: Database,
     filter_clause: str,
+    filter_params: list[str],
     start_date: datetime,
     end_date: datetime,
     day_of_week_filter: Optional[str],
@@ -344,6 +359,7 @@ def _analyze_availability_patterns(
     console.print("[bold cyan]📅 Availability Patterns[/bold cyan]\n")
 
     # Query courts data
+    ph = db.adapter.get_placeholder()
     query = f"""
         SELECT
             name,
@@ -354,16 +370,24 @@ def _analyze_availability_patterns(
             time_slot
         FROM courts
         WHERE {filter_clause}
-        AND date BETWEEN ? AND ?
+        AND date BETWEEN {ph} AND {ph}
         ORDER BY date
     """  # noqa: S608
 
-    conn = sqlite3.connect(str(db.db_path))
-    cursor = conn.cursor()
-    cursor.execute(
-        query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
-    )
-    rows = cursor.fetchall()
+    conn = db.adapter.connect()
+    try:
+        cursor = db.adapter.execute(
+            conn,
+            query,
+            (
+                *filter_params,
+                start_date.strftime("%m/%d/%Y"),
+                end_date.strftime("%m/%d/%Y"),
+            ),
+        )
+        rows = db.adapter.fetchall(cursor)
+    finally:
+        db.adapter.close(conn)
 
     if not rows:
         console.print("[yellow]No data available for analysis.[/yellow]\n")

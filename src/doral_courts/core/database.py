@@ -288,6 +288,47 @@ class Database:
         try:
             placeholder = self.adapter.get_placeholder()
 
+            # Build the per-court statements once; they don't vary per iteration.
+            # ON CONFLICT ... DO UPDATE is supported by both SQLite (>= 3.24) and
+            # PostgreSQL and, unlike INSERT OR REPLACE, preserves the existing row
+            # id so child time_slots are not orphaned. Conflict target is the
+            # natural key (name, date).
+            upsert_sql = f"""
+                INSERT INTO courts
+                (name, sport_type, location, capacity, availability_status,
+                 date, time_slot, price, last_updated)
+                VALUES (
+                    {placeholder}, {placeholder}, {placeholder}, {placeholder},
+                    {placeholder}, {placeholder}, {placeholder}, {placeholder},
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (name, date)
+                DO UPDATE SET
+                    sport_type = EXCLUDED.sport_type,
+                    location = EXCLUDED.location,
+                    capacity = EXCLUDED.capacity,
+                    availability_status = EXCLUDED.availability_status,
+                    time_slot = EXCLUDED.time_slot,
+                    price = EXCLUDED.price,
+                    last_updated = CURRENT_TIMESTAMP
+            """  # noqa: S608
+            select_id_sql = (
+                f"SELECT id FROM courts WHERE name = {placeholder} "  # noqa: S608
+                f"AND date = {placeholder}"
+            )
+            delete_slots_sql = (
+                f"DELETE FROM time_slots WHERE court_id = {placeholder} "  # noqa: S608
+                f"AND date = {placeholder}"
+            )
+            insert_slot_sql = f"""
+                INSERT INTO time_slots
+                (court_id, start_time, end_time, status, date, last_updated)
+                VALUES (
+                    {placeholder}, {placeholder}, {placeholder},
+                    {placeholder}, {placeholder}, CURRENT_TIMESTAMP
+                )
+            """  # noqa: S608
+
             for i, court in enumerate(courts):
                 try:
                     logger.debug(
@@ -295,34 +336,9 @@ class Database:
                     )
 
                     # Insert or update the main court record.
-                    # ON CONFLICT ... DO UPDATE is supported by both SQLite
-                    # (>= 3.24) and PostgreSQL and, unlike INSERT OR REPLACE,
-                    # preserves the existing row id so child time_slots are not
-                    # orphaned. Conflict target is the natural key (name, date).
                     self.adapter.execute(
                         conn,
-                        f"""
-                        INSERT INTO courts
-                        (name, sport_type, location, capacity,
-                         availability_status,
-                         date, time_slot, price, last_updated)
-                        VALUES (
-                            {placeholder}, {placeholder},
-                            {placeholder}, {placeholder},
-                            {placeholder}, {placeholder},
-                            {placeholder}, {placeholder},
-                            CURRENT_TIMESTAMP
-                        )
-                        ON CONFLICT (name, date)
-                        DO UPDATE SET
-                            sport_type = EXCLUDED.sport_type,
-                            location = EXCLUDED.location,
-                            capacity = EXCLUDED.capacity,
-                            availability_status = EXCLUDED.availability_status,
-                            time_slot = EXCLUDED.time_slot,
-                            price = EXCLUDED.price,
-                            last_updated = CURRENT_TIMESTAMP
-                    """,  # noqa: S608
+                        upsert_sql,
                         (
                             court.name,
                             court.sport_type,
@@ -338,58 +354,34 @@ class Database:
                     # Resolve the court id by its natural key. lastrowid is
                     # unreliable across the upsert/backends, so always look up.
                     cursor = self.adapter.execute(
-                        conn,
-                        f"""
-                        SELECT id FROM courts
-                        WHERE name = {placeholder}
-                            AND date = {placeholder}
-                    """,  # noqa: S608
-                        (court.name, court.date),
+                        conn, select_id_sql, (court.name, court.date)
                     )
                     court_id = self.adapter.fetch_scalar(cursor)
 
-                    # Insert time slots if available
+                    # Replace this court's time slots for the date in one batch.
                     if court_id and court.time_slots:
                         logger.debug(
                             "Inserting %d time slots for court %s",
                             len(court.time_slots),
                             court.name,
                         )
-
-                        # Clear existing time slots for this court and date
                         self.adapter.execute(
-                            conn,
-                            f"""
-                            DELETE FROM time_slots
-                            WHERE court_id = {placeholder}
-                                AND date = {placeholder}
-                        """,  # noqa: S608
-                            (court_id, court.date),
+                            conn, delete_slots_sql, (court_id, court.date)
                         )
-
-                        # Insert new time slots
-                        for slot in court.time_slots:
-                            self.adapter.execute(
-                                conn,
-                                f"""
-                                INSERT INTO time_slots
-                                (court_id, start_time, end_time,
-                                 status, date, last_updated)
-                                VALUES (
-                                    {placeholder}, {placeholder},
-                                    {placeholder}, {placeholder},
-                                    {placeholder},
-                                    CURRENT_TIMESTAMP
-                                )
-                            """,  # noqa: S608
+                        self.adapter.executemany(
+                            conn,
+                            insert_slot_sql,
+                            [
                                 (
                                     court_id,
                                     slot.start_time,
                                     slot.end_time,
                                     slot.status,
                                     court.date,
-                                ),
-                            )
+                                )
+                                for slot in court.time_slots
+                            ],
+                        )
 
                     inserted_count += 1
 

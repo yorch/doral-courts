@@ -38,7 +38,7 @@ def list_courts(ctx: click.Context, sport: Optional[str], date: Optional[str]) -
         return
 
     logger.info("Starting court names listing - fetching fresh data")
-    logger.debug(f"Sport: {sport}, Date: {date} -> {parsed_date}")
+    logger.debug("Sport: %s, Date: %s -> %s", sport, date, parsed_date)
 
     # Fetch fresh data (sport filtering is applied by the scraper), store it,
     # and optionally save it to disk.

@@ -42,7 +42,7 @@ def query(ctx: click.Context, query_name: str) -> None:
             date: "+2"
             location: "Doral Central Park"
     """
-    logger.info(f"Executing saved query: {query_name}")
+    logger.info("Executing saved query: %s", query_name)
 
     config = Config()
     query_params = config.get_query(query_name)
@@ -88,8 +88,12 @@ def query(ctx: click.Context, query_name: str) -> None:
         return
 
     logger.debug(
-        f"Query parameters - Sport: {sport}, Date: {date} -> {parsed_date}, "
-        f"Status: {status}, Location: {location}"
+        "Query parameters - Sport: %s, Date: %s -> %s, Status: %s, Location: %s",
+        sport,
+        date,
+        parsed_date,
+        status,
+        location,
     )
 
     # Fetch fresh data (sport filtering is applied by the scraper), store it,
@@ -110,7 +114,9 @@ def query(ctx: click.Context, query_name: str) -> None:
             for court in filtered_courts
             if status.lower() in court.availability_status.lower()
         ]
-        logger.debug(f"Applied status filter '{status}': {len(filtered_courts)} courts")
+        logger.debug(
+            "Applied status filter '%s': %s courts", status, len(filtered_courts)
+        )
 
     if location:
         filtered_courts = [
@@ -119,10 +125,12 @@ def query(ctx: click.Context, query_name: str) -> None:
             if location.lower() in court.location.lower()
         ]
         logger.debug(
-            f"Applied location filter '{location}': {len(filtered_courts)} courts"
+            "Applied location filter '%s': %s courts",
+            location,
+            len(filtered_courts),
         )
 
-    logger.info(f"Found {len(filtered_courts)} courts matching query criteria")
+    logger.info("Found %s courts matching query criteria", len(filtered_courts))
 
     if not filtered_courts:
         console.print("[red]No courts found matching your query criteria.[/red]")

@@ -1,5 +1,6 @@
 """Database adapter for supporting multiple database backends."""
 
+import os
 import sqlite3
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -333,12 +334,15 @@ def create_adapter(
             pg_config.get("port"),
             pg_config.get("database"),
         )
+        # Prefer the DORAL_PG_PASSWORD environment variable over a password
+        # stored in plaintext config, so secrets can be kept out of the file.
+        password = os.environ.get("DORAL_PG_PASSWORD") or pg_config.get("password", "")
         return PostgreSQLAdapter(
             host=pg_config.get("host", "localhost"),
             port=pg_config.get("port", 5432),
             database=pg_config.get("database", "doral_courts"),
             user=pg_config.get("user", "postgres"),
-            password=pg_config.get("password", ""),
+            password=password,
         )
 
     else:

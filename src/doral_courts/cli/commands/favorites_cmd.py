@@ -73,7 +73,7 @@ def add_favorite(court_name: str) -> None:
         doral-courts favorites add "DLP Tennis Court 1"
         doral-courts favorites add "DLP Tennis Court 2"
     """
-    logger.info(f"Adding court to favorites: {court_name}")
+    logger.info("Adding court to favorites: %s", court_name)
 
     config = Config()
 
@@ -105,7 +105,7 @@ def remove_favorite(court_name: str) -> None:
     Examples:
         doral-courts favorites remove "DLP Tennis Court 1"
     """
-    logger.info(f"Removing court from favorites: {court_name}")
+    logger.info("Removing court from favorites: %s", court_name)
 
     config = Config()
 
