@@ -1,6 +1,6 @@
 [project]
 name = "doral-courts"
-version = "0.2.0"
+version = "0.2.1"
 description = "CLI app for showing Doral Tennis and Pickleball Courts availability"
 readme = "README.md"
 license = {text = "MIT"}
