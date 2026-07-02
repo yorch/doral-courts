@@ -34,7 +34,10 @@ def parse_date_input(date_input: Optional[str] = None) -> str:
     elif re.match(r"^[+-]\d+$", date_input):
         # Handle relative days like +3, -2
         days_offset = int(date_input)
-        target_date = datetime.now() + timedelta(days=days_offset)
+        try:
+            target_date = datetime.now() + timedelta(days=days_offset)
+        except OverflowError as err:
+            raise ValueError(f"Date offset out of range: {date_input}.") from err
     elif re.match(r"^\d{1,2}/\d{1,2}/\d{4}$", date_input):
         # Handle MM/DD/YYYY format - validate it
         try:
@@ -67,4 +70,45 @@ def parse_date_input(date_input: Optional[str] = None) -> str:
             )
 
     # Return in MM/DD/YYYY format that the website expects
+    # (mypy cannot prove target_date is non-None across the branches above)
+    if target_date is None:
+        raise ValueError(f"Invalid date format: {date_input}.")
     return target_date.strftime("%m/%d/%Y")
+
+
+# Sentinels used to push unparseable values to the end of a sort order.
+_MAX_DATE = datetime.max
+_MAX_MINUTES = 24 * 60 + 1
+
+
+def date_sort_key(date_str: str) -> datetime:
+    """Return a sortable datetime for a court date string.
+
+    Dates are stored as ``MM/DD/YYYY`` text, which sorts incorrectly
+    lexicographically. Parse to a real ``datetime`` for chronological
+    ordering; unparseable values sort last.
+    """
+    if not date_str:
+        return _MAX_DATE
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m-%d-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(date_str.strip(), fmt)
+        except ValueError:
+            continue
+    return _MAX_DATE
+
+
+def time_sort_key(time_str: str) -> int:
+    """Return minutes-since-midnight for a 12-hour time string.
+
+    Time slots are stored as ``"8:00 am"`` text, which sorts incorrectly
+    lexicographically (``"10:00 am"`` before ``"8:00 am"``). Convert to a
+    numeric key for chronological ordering; unparseable values sort last.
+    """
+    if not time_str:
+        return _MAX_MINUTES
+    try:
+        parsed = datetime.strptime(time_str.strip().lower(), "%I:%M %p")
+    except ValueError:
+        return _MAX_MINUTES
+    return parsed.hour * 60 + parsed.minute

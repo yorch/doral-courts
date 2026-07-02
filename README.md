@@ -38,8 +38,8 @@ cd doral-courts
 # Install dependencies with uv (recommended)
 uv sync
 
-# Or install with pip
-pip install -r requirements.txt
+# Or install with pip (editable install)
+pip install -e .
 
 # Optional: Install with PostgreSQL support for production use
 uv sync --extra postgresql
@@ -88,13 +88,20 @@ doral-courts monitor --sport pickleball --interval 10 --quiet &
 doral-courts analyze --day-of-week Friday --time-slot "8:00 am" --mode velocity
 ```
 
-### 3. Save Favorite Searches
+### 3. Saved Searches
 
-Quick access to your regular court searches.
+Define reusable searches in `~/.doral-courts/config.yaml`, then run them by name:
+
+```yaml
+# ~/.doral-courts/config.yaml
+queries:
+  weekend_tennis:
+    sport: tennis
+    date: "+6"
+```
 
 ```bash
-doral-courts query save weekend_tennis --sport tennis --date +6
-doral-courts query run weekend_tennis
+doral-courts query weekend_tennis
 ```
 
 ## 📚 Documentation
@@ -157,7 +164,7 @@ uv run doral-courts list
 uv run doral-courts list --sport tennis --date +7
 
 # Pickleball courts at specific location
-uv run doral-courts list --sport pickleball --location "Doral Central Park"
+uv run doral-courts list-available-slots --sport pickleball --location "Doral Central Park"
 
 # Available slots for tomorrow with data export
 uv run doral-courts list-available-slots --date tomorrow --save-data
@@ -174,9 +181,8 @@ uv run doral-courts favorites add "DLP Tennis Court 1"
 uv run doral-courts favorites list
 uv run doral-courts list --favorites  # Show only favorite courts
 
-# Run a saved query
-uv run doral-courts query save my_tennis --sport tennis --date tomorrow
-uv run doral-courts query run my_tennis
+# Run a saved query by name (defined in ~/.doral-courts/config.yaml)
+uv run doral-courts query my_tennis
 ```
 
 ### Monitoring & Analytics

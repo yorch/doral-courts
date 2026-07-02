@@ -1,3 +1,6 @@
+import logging
+import tempfile
+from pathlib import Path
 from typing import List, Optional
 
 import cloudscraper
@@ -54,7 +57,8 @@ class Scraper:
         self.base_url = "https://fldoralweb.myvscloud.com/webtrac/web/search.html"
         self.home_url = "https://fldoralweb.myvscloud.com/webtrac/web/splash.html"
         self.html_extractor = CourtAvailabilityHTMLExtractor()
-        self.last_request_urls = []  # Store actual URLs from recent requests
+        self.last_request_urls: list[str] = []  # Actual URLs from recent requests
+        self._csrf_token: Optional[str] = None  # Cached per fetch operation
 
         # Create cloudscraper session to bypass Cloudflare protection
         self.session = cloudscraper.create_scraper(
@@ -124,14 +128,17 @@ class Scraper:
 
             logger.debug("Session cookies: %s", list(self.session.cookies.keys()))
 
-            # Consider any non-error status as success
-            # since cloudscraper handles challenges
-            if response.status_code < 500:
+            # Treat 2xx/3xx as success. A 4xx (e.g. 403/429) means Cloudflare
+            # or the anti-bot layer blocked us — surface that as a failure
+            # instead of silently proceeding to an empty result set.
+            if response.status_code < 400:
                 logger.info("Session initialized successfully with cloudscraper")
                 return True
             else:
                 logger.warning(
-                    "Server error during session initialization: %d",
+                    "Home page returned status %d during session"
+                    " initialization; the site may be blocking automated"
+                    " requests",
                     response.status_code,
                 )
                 return False
@@ -153,7 +160,7 @@ class Scraper:
                 csrf_input = soup.find("input", {"name": "_csrf_token"})
 
                 if csrf_input and csrf_input.get("value"):
-                    token = csrf_input["value"]
+                    token = str(csrf_input["value"])
                     logger.debug("Found CSRF token: %s...", token[:20])
                     return token
                 else:
@@ -185,9 +192,19 @@ class Scraper:
             logger.debug("Using provided date: %s", date)
 
         logger.debug("Building search params for page %d, time %s", page, begin_time)
-        csrf_token = self._get_csrf_token()
+        # The CSRF token is stable for the session; fetch it once per fetch
+        # operation rather than on every paginated request.
+        if self._csrf_token is None:
+            self._csrf_token = self._get_csrf_token()
+        csrf_token = self._csrf_token
 
-        params = {
+        if not csrf_token:
+            logger.warning(
+                "Proceeding without a CSRF token; the search request may be "
+                "rejected and return no results"
+            )
+
+        params: dict[str, object] = {
             "Action": "Start",
             "SubAction": "",
             "_csrf_token": csrf_token,
@@ -246,10 +263,11 @@ class Scraper:
             logger.error("Failed to initialize session with website")
             return [], ""
 
-        all_courts = []
-        all_html_content = []
+        all_courts: List[Court] = []
+        all_html_content: List[str] = []
         page = 1
         self.last_request_urls = []  # Reset for this fetch operation
+        self._csrf_token = None  # Force a fresh token for this fetch operation
 
         try:
             while True:
@@ -284,19 +302,22 @@ class Scraper:
                     html_content = response.text
                     all_html_content.append(html_content)
 
-                    # Debug: save HTML to see what we're getting
-                    if logger.isEnabledFor(10):  # DEBUG level
+                    # Debug: save HTML to see what we're getting. Write into a
+                    # temp directory rather than the user's CWD.
+                    if logger.isEnabledFor(logging.DEBUG):
                         try:
+                            debug_path = (
+                                Path(tempfile.gettempdir())
+                                / f"doral_debug_page_{page}.html"
+                            )
                             with open(
-                                f"debug_page_{page}.html",
+                                debug_path,
                                 "w",
                                 encoding="utf-8",
                                 errors="replace",
                             ) as f:
                                 f.write(html_content)
-                            logger.debug(
-                                "Saved HTML content to debug_page_%d.html", page
-                            )
+                            logger.debug("Saved HTML content to %s", debug_path)
                         except Exception as e:
                             logger.debug("Could not save HTML debug file: %s", e)
 
@@ -387,7 +408,7 @@ class Scraper:
                             "data-click-set-value", "1"
                         )
                         try:
-                            max_page = int(last_page_value)
+                            max_page = int(str(last_page_value))
                             if current_page >= max_page:
                                 logger.debug(
                                     "Already at last page (%d), stopping pagination",

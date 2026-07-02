@@ -17,7 +17,7 @@ Available for all commands:
 
 ```bash
 # List all courts with filters
-doral-courts list [--sport tennis|pickleball] [--status available|booked] [--date DATE] [--favorites]
+doral-courts list [--sport tennis|pickleball] [--status available|booked|maintenance] [--date DATE] [--favorites]
 
 # Show all court names
 doral-courts list-courts [--sport tennis|pickleball]
@@ -38,7 +38,7 @@ doral-courts list-available-slots [--sport tennis|pickleball] [--date DATE]
 doral-courts slots --court "Court Name" [--date DATE] [--available-only]
 
 # Comprehensive scraped data view
-doral-courts data [--mode summary|detailed|raw] [--sport tennis|pickleball] [--date DATE]
+doral-courts data [--mode summary|detailed] [--sport tennis|pickleball] [--date DATE]
 
 # View historical court data (cached)
 doral-courts history [--sport tennis|pickleball] [--date DATE] [--days N]
@@ -69,11 +69,19 @@ doral-courts favorites add "Court Name"
 doral-courts favorites remove "Court Name"
 doral-courts favorites list
 
-# Run saved queries
-doral-courts query list
-doral-courts query run "query-name"
-doral-courts query save "query-name" --sport tennis --date tomorrow
-doral-courts query delete "query-name"
+# Run a saved query by name (queries are defined in
+# ~/.doral-courts/config.yaml under the `queries:` key)
+doral-courts query my_tennis
+```
+
+Saved queries are configured manually in `~/.doral-courts/config.yaml`:
+
+```yaml
+queries:
+  my_tennis:
+    sport: tennis
+    date: tomorrow
+    status: available
 ```
 
 📖 [Detailed documentation →](./reference.md#11-favorites---favorite-courts-management)
@@ -102,7 +110,7 @@ doral-courts list
 doral-courts list --sport tennis --date tomorrow
 
 # Pickleball at specific location
-doral-courts list --sport pickleball --location "Doral Legacy Park"
+doral-courts list-available-slots --sport pickleball --location "Doral Legacy Park"
 ```
 
 ### Planning Ahead

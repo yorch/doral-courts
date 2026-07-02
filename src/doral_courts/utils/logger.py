@@ -46,8 +46,12 @@ def setup_logging(verbose: bool = False, log_file: Optional[str] = None) -> None
     console_handler.setLevel(log_level)
     console_handler.setFormatter(formatter)
 
-    # Configure root logger
+    # Configure root logger. Clear any handlers from a previous call so
+    # repeated setup_logging() invocations don't attach duplicate handlers
+    # (which would emit every log line multiple times).
     root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
     root_logger.setLevel(log_level)
     root_logger.addHandler(console_handler)
 

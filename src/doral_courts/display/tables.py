@@ -146,9 +146,9 @@ def display_available_slots_table(
     sports_breakdown = {}
     location_breakdown = {}
 
-    for slot in available_slots_data:
-        sport = slot["sport"]
-        location = slot["location"]
+    for entry in available_slots_data:
+        sport = entry["sport"]
+        location = entry["location"]
 
         if sport not in sports_breakdown:
             sports_breakdown[sport] = 0

@@ -89,6 +89,14 @@ def analyze(
     """
     db = Database()
 
+    # analyze connects to SQLite directly (bypassing the adapter), so it only
+    # supports the SQLite backend.
+    if db.adapter.dialect != "sqlite":
+        console.print(
+            "[red]The 'analyze' command only supports the SQLite backend.[/red]"
+        )
+        return
+
     # Build filters
     filters = []
     if sport:
@@ -165,7 +173,7 @@ def _analyze_booking_velocity(
         ORDER BY c.name, ts.date, ts.start_time, ts.last_updated
     """  # noqa: S608
 
-    conn = sqlite3.connect(db.db_path)
+    conn = sqlite3.connect(str(db.db_path))
     cursor = conn.cursor()
     cursor.execute(
         query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
@@ -350,7 +358,7 @@ def _analyze_availability_patterns(
         ORDER BY date
     """  # noqa: S608
 
-    conn = sqlite3.connect(db.db_path)
+    conn = sqlite3.connect(str(db.db_path))
     cursor = conn.cursor()
     cursor.execute(
         query, (start_date.strftime("%m/%d/%Y"), end_date.strftime("%m/%d/%Y"))
@@ -362,7 +370,9 @@ def _analyze_availability_patterns(
         return
 
     # Analyze by day of week
-    day_stats = defaultdict(lambda: {"available": 0, "booked": 0})
+    day_stats: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"available": 0, "booked": 0}
+    )
 
     for row in rows:
         name, location, sport, date, status, time_slot_summary = row

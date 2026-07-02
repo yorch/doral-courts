@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 
 from ..utils.logger import get_logger
 
@@ -63,7 +63,7 @@ class Court:
     availability_status: str
     date: str
     time_slots: List[TimeSlot]
-    price: str = None
+    price: Optional[str] = None
 
     @property
     def time_slot(self) -> str:
@@ -134,7 +134,7 @@ class CourtAvailabilityHTMLExtractor:
             print(f"Found {len(courts)} courts")
         """
         logger.debug("Starting court data parsing")
-        courts = []
+        courts: List[Court] = []
 
         # Debug: let's examine the HTML structure
         logger.debug("HTML title: %s", soup.title.string if soup.title else "No title")
@@ -195,7 +195,7 @@ class CourtAvailabilityHTMLExtractor:
                         # Try to extract from dateblock
                         dateblock = date_cell.find("span", class_="dateblock")
                         if dateblock and dateblock.get("data-tooltip"):
-                            date = dateblock["data-tooltip"]
+                            date = str(dateblock["data-tooltip"])
                         else:
                             date = date_cell.get_text(strip=True)
                     else:
@@ -288,7 +288,7 @@ class CourtAvailabilityHTMLExtractor:
         logger.info("Parsed %d courts from HTML", len(courts))
         return courts
 
-    def _extract_time_slots(self, court_row: object) -> List[TimeSlot]:
+    def _extract_time_slots(self, court_row: Tag) -> List[TimeSlot]:
         """
         Extract time slots from the cart-blocks section following a court row.
 
@@ -319,7 +319,7 @@ class CourtAvailabilityHTMLExtractor:
             for slot in time_slots:
                 print(f"{slot.start_time} - {slot.end_time}: {slot.status}")
         """
-        time_slots = []
+        time_slots: List[TimeSlot] = []
 
         # Find the next row which should contain cart-blocks
         next_row = court_row.find_next_sibling("tr")
@@ -338,8 +338,13 @@ class CourtAvailabilityHTMLExtractor:
 
         for button in cart_buttons:
             try:
-                button_classes = button.get("class", [])
-                button_tooltip = button.get("data-tooltip", "")
+                # ``class`` is multi-valued; normalize to a list of strings.
+                raw_classes = button.get("class")
+                if isinstance(raw_classes, str):
+                    button_classes = raw_classes.split()
+                else:
+                    button_classes = list(raw_classes) if raw_classes else []
+                button_tooltip = str(button.get("data-tooltip", "") or "")
 
                 # Check if this is an available slot
                 # Available slots have 'success' class and 'Book Now' tooltip
