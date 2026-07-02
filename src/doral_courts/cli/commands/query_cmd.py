@@ -2,16 +2,13 @@
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from ...core.database import Database
-from ...core.scraper import Scraper
 from ...display.tables import display_courts_table
 from ...utils.config import Config
 from ...utils.date_utils import parse_date_input
-from ...utils.file_utils import save_html_data, save_json_data
 from ...utils.logger import get_logger
+from .._shared import fetch_and_store
 
 logger = get_logger(__name__)
 console = Console()
@@ -95,70 +92,17 @@ def query(ctx: click.Context, query_name: str) -> None:
         f"Status: {status}, Location: {location}"
     )
 
-    db = Database()
+    # Fetch fresh data (sport filtering is applied by the scraper), store it,
+    # and optionally save it to disk.
+    courts, _ = fetch_and_store(
+        ctx, parsed_date, sport=sport, suffix=f"_query_{query_name}"
+    )
+    if not courts:
+        return
 
-    # Fetch fresh data from website
-    logger.info("Fetching fresh data from website")
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Fetching court data...", total=None)
-
-        scraper = Scraper()
-
-        # Check if we should save data
-        save_data = ctx.obj.get("save_data", False)
-        if save_data:
-            courts, html_content = scraper.fetch_courts_with_html(
-                date=parsed_date, sport_filter=sport
-            )
-        else:
-            courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
-            html_content = ""
-
-        if courts:
-            logger.info(f"Successfully fetched {len(courts)} courts from website")
-            # Store in database for historical tracking
-            inserted_count = db.insert_courts(courts)
-            logger.debug(
-                f"Inserted/updated {inserted_count} courts in database for tracking"
-            )
-            progress.update(task, description=f"Fetched {len(courts)} courts")
-
-            # Save data if requested
-            if save_data:
-                try:
-                    html_path = save_html_data(html_content, f"_query_{query_name}")
-                    json_path = save_json_data(
-                        courts, f"_query_{query_name}", scraper.get_last_request_url()
-                    )
-                    console.print("[green]Data saved to:[/green]")
-                    console.print(f"  HTML: {html_path}")
-                    console.print(f"  JSON: {json_path}")
-                except Exception as e:
-                    logger.error(f"Error saving data: {e}")
-                    console.print(f"[red]Error saving data: {e}[/red]")
-        else:
-            logger.error("No court data could be retrieved from website")
-            console.print("[red]Unable to fetch court data from website.[/red]")
-            return
-
-    # Apply filters to fresh data
+    # Apply remaining query filters to fresh data
     logger.debug("Applying query filters to fresh data")
     filtered_courts = courts
-
-    if sport:
-        filtered_courts = [
-            court
-            for court in filtered_courts
-            if court.sport_type.lower() == sport.lower()
-        ]
-        logger.debug(
-            f"Applied sport filter '{sport}': "
-            f"{len(courts)} -> {len(filtered_courts)} courts"
-        )
 
     if status:
         filtered_courts = [

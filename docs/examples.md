@@ -27,7 +27,7 @@ uv run doral-courts list --sport tennis --date tomorrow
 uv run doral-courts list-available-slots --date tomorrow
 
 # Specific location tomorrow
-uv run doral-courts list --location "Doral Central Park" --date tomorrow
+uv run doral-courts list-available-slots --location "Doral Central Park" --date tomorrow
 ```
 
 ## Sport-Specific Examples
@@ -149,13 +149,13 @@ uv run doral-courts watch --save-data --interval 3600  # Every hour
 
 ```bash
 # All DCP courts
-uv run doral-courts list --location "Doral Central Park"
+uv run doral-courts list-available-slots --location "Doral Central Park"
 
 # DCP available slots
 uv run doral-courts list-available-slots --location "Doral Central Park"
 
 # Monitor DCP tennis courts
-uv run doral-courts watch --sport tennis --location "Doral Central Park"
+uv run doral-courts monitor --sport tennis --location "Doral Central Park"
 ```
 
 ### Location Discovery

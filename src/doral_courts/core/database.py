@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from ..utils.config import Config
+from ..utils.date_utils import date_sort_key, time_sort_key
 from ..utils.logger import get_logger
 from .db_adapter import DatabaseAdapter, create_adapter
 from .html_extractor import Court, TimeSlot
@@ -83,7 +84,7 @@ class Database:
         column rename). Sets up indexes for efficient querying.
 
         Tables Created:
-            courts: Main court data with unique constraint on (name, date, time_slot)
+            courts: Main court data with unique constraint on (name, date)
             time_slots: Individual time slots with foreign key to courts
 
         Indexes Created:
@@ -100,11 +101,13 @@ class Database:
 
         conn = self.adapter.connect()
         try:
-            # Use different primary key syntax for SQLite vs PostgreSQL
-            if hasattr(self.adapter, "db_path"):  # SQLite
-                id_column = "id INTEGER PRIMARY KEY AUTOINCREMENT"
-            else:  # PostgreSQL
-                id_column = "id SERIAL PRIMARY KEY"
+            id_column = self.adapter.id_column_sql()
+
+            # Migration: older versions used UNIQUE(name, date, time_slot),
+            # where time_slot held a computed availability summary. That broke
+            # deduplication (changed availability => new row). Rebuild the
+            # cache if the legacy constraint is detected (SQLite only).
+            self._migrate_legacy_unique_constraint(conn)
 
             # Create courts table
             cursor = self.adapter.execute(
@@ -122,7 +125,7 @@ class Database:
                     time_slot TEXT NOT NULL,
                     price TEXT,
                     last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UNIQUE(name, date, time_slot)
+                    UNIQUE(name, date)
                 )
             """,
             )
@@ -130,7 +133,7 @@ class Database:
 
             # Migration: Check if surface_type column exists and rename it to capacity
             # This is SQLite-specific, skip for PostgreSQL
-            if hasattr(self.adapter, "db_path"):  # SQLite only
+            if self.adapter.dialect == "sqlite":
                 cursor = self.adapter.execute(conn, "PRAGMA table_info(courts)")
                 columns = [column[1] for column in self.adapter.fetchall(cursor)]
                 if "surface_type" in columns and "capacity" not in columns:
@@ -214,12 +217,45 @@ class Database:
         finally:
             self.adapter.close(conn)
 
+    def _migrate_legacy_unique_constraint(self, conn: object) -> None:
+        """Drop the cached courts table if it uses the legacy unique key.
+
+        Old schemas declared ``UNIQUE(name, date, time_slot)``. Because
+        ``time_slot`` is a derived availability summary, that key produced a
+        new row every time availability changed, defeating deduplication.
+        The courts data is a re-fetchable local cache, so the safe upgrade is
+        to drop the legacy tables and let them be recreated with the correct
+        ``UNIQUE(name, date)`` key. SQLite only; PostgreSQL deployments are
+        new and never had the legacy schema.
+        """
+        if self.adapter.dialect != "sqlite":
+            return
+
+        cursor = self.adapter.execute(
+            conn,
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='courts'",
+        )
+        row = self.adapter.fetchone(cursor)
+        if not row or not row[0]:
+            return
+
+        normalized = "".join(row[0].split()).lower()
+        if "unique(name,date,time_slot)" in normalized:
+            logger.warning(
+                "Detected legacy database schema (UNIQUE on time_slot); "
+                "rebuilding court cache with corrected unique key"
+            )
+            self.adapter.execute(conn, "DROP TABLE IF EXISTS time_slots")
+            self.adapter.execute(conn, "DROP TABLE IF EXISTS courts")
+            self.adapter.commit(conn)
+
     def insert_courts(self, courts: List[Court]) -> int:
         """
         Insert or update court data in the database.
 
-        Stores court information and associated time slots. Uses INSERT OR REPLACE
-        to handle duplicate entries based on unique constraint (name, date, time_slot).
+        Stores court information and associated time slots. Uses
+        INSERT ... ON CONFLICT(name, date) DO UPDATE to handle duplicate entries,
+        preserving the existing row id so child time slots are not orphaned.
         Each court's time slots are stored in the separate time_slots table.
 
         Args:
@@ -246,6 +282,7 @@ class Database:
         """
         logger.info("Inserting %d courts into database", len(courts))
         inserted_count = 0
+        failed_count = 0
 
         conn = self.adapter.connect()
         try:
@@ -257,89 +294,59 @@ class Database:
                         "Inserting court %d/%d: %s", i + 1, len(courts), court.name
                     )
 
-                    # Insert or update the main court record
-                    # Note: INSERT OR REPLACE is SQLite-specific
-                    # For PostgreSQL, we'll use INSERT ... ON CONFLICT
-                    if hasattr(self.adapter, "db_path"):  # SQLite
-                        cursor = self.adapter.execute(
-                            conn,
-                            f"""
-                            INSERT OR REPLACE INTO courts
-                            (name, sport_type, location, capacity,
-                             availability_status,
-                             date, time_slot, price, last_updated)
-                            VALUES (
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                CURRENT_TIMESTAMP
-                            )
-                        """,  # noqa: S608
-                            (
-                                court.name,
-                                court.sport_type,
-                                court.location,
-                                court.capacity,
-                                court.availability_status,
-                                court.date,
-                                court.time_slot,
-                                court.price,
-                            ),
+                    # Insert or update the main court record.
+                    # ON CONFLICT ... DO UPDATE is supported by both SQLite
+                    # (>= 3.24) and PostgreSQL and, unlike INSERT OR REPLACE,
+                    # preserves the existing row id so child time_slots are not
+                    # orphaned. Conflict target is the natural key (name, date).
+                    self.adapter.execute(
+                        conn,
+                        f"""
+                        INSERT INTO courts
+                        (name, sport_type, location, capacity,
+                         availability_status,
+                         date, time_slot, price, last_updated)
+                        VALUES (
+                            {placeholder}, {placeholder},
+                            {placeholder}, {placeholder},
+                            {placeholder}, {placeholder},
+                            {placeholder}, {placeholder},
+                            CURRENT_TIMESTAMP
                         )
-                    else:  # PostgreSQL
-                        cursor = self.adapter.execute(
-                            conn,
-                            f"""
-                            INSERT INTO courts
-                            (name, sport_type, location, capacity,
-                             availability_status,
-                             date, time_slot, price, last_updated)
-                            VALUES (
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                {placeholder}, {placeholder},
-                                CURRENT_TIMESTAMP
-                            )
-                            ON CONFLICT (name, date, time_slot)
-                            DO UPDATE SET
-                                sport_type = EXCLUDED.sport_type,
-                                location = EXCLUDED.location,
-                                capacity = EXCLUDED.capacity,
-                                availability_status = EXCLUDED.availability_status,
-                                price = EXCLUDED.price,
-                                last_updated = CURRENT_TIMESTAMP
-                        """,  # noqa: S608
-                            (
-                                court.name,
-                                court.sport_type,
-                                court.location,
-                                court.capacity,
-                                court.availability_status,
-                                court.date,
-                                court.time_slot,
-                                court.price,
-                            ),
-                        )
+                        ON CONFLICT (name, date)
+                        DO UPDATE SET
+                            sport_type = EXCLUDED.sport_type,
+                            location = EXCLUDED.location,
+                            capacity = EXCLUDED.capacity,
+                            availability_status = EXCLUDED.availability_status,
+                            time_slot = EXCLUDED.time_slot,
+                            price = EXCLUDED.price,
+                            last_updated = CURRENT_TIMESTAMP
+                    """,  # noqa: S608
+                        (
+                            court.name,
+                            court.sport_type,
+                            court.location,
+                            court.capacity,
+                            court.availability_status,
+                            court.date,
+                            court.time_slot,
+                            court.price,
+                        ),
+                    )
 
-                    # Get the court ID
-                    court_id = cursor.lastrowid
-                    if court_id is None or court_id == 0:
-                        # If INSERT OR REPLACE/ON CONFLICT updated
-                        # an existing record, get the ID
-                        cursor = self.adapter.execute(
-                            conn,
-                            f"""
-                            SELECT id FROM courts
-                            WHERE name = {placeholder}
-                                AND date = {placeholder}
-                                AND time_slot = {placeholder}
-                        """,  # noqa: S608
-                            (court.name, court.date, court.time_slot),
-                        )
-                        result = self.adapter.fetchone(cursor)
-                        court_id = result[0] if result else None
+                    # Resolve the court id by its natural key. lastrowid is
+                    # unreliable across the upsert/backends, so always look up.
+                    cursor = self.adapter.execute(
+                        conn,
+                        f"""
+                        SELECT id FROM courts
+                        WHERE name = {placeholder}
+                            AND date = {placeholder}
+                    """,  # noqa: S608
+                        (court.name, court.date),
+                    )
+                    court_id = self.adapter.fetch_scalar(cursor)
 
                     # Insert time slots if available
                     if court_id and court.time_slots:
@@ -387,10 +394,15 @@ class Database:
                     inserted_count += 1
 
                 except Exception as e:
+                    failed_count += 1
                     logger.error("Error inserting court %s: %s", court.name, e)
 
             self.adapter.commit(conn)
             logger.info("Successfully inserted/updated %d courts", inserted_count)
+            if failed_count:
+                logger.warning(
+                    "%d of %d courts failed to insert", failed_count, len(courts)
+                )
         finally:
             self.adapter.close(conn)
 
@@ -433,8 +445,8 @@ class Database:
             query += f" AND date = {placeholder}"  # noqa: S608
             params.append(date)
 
-        query += " ORDER BY date, time_slot, sport_type, name"
-
+        # Note: dates (MM/DD/YYYY) and the time_slot summary are TEXT, so SQL
+        # ORDER BY sorts them lexicographically (wrong). Sort in Python below.
         logger.debug("Executing query: %s with params: %s", query, params)
 
         conn = self.adapter.connect()
@@ -444,14 +456,15 @@ class Database:
 
             logger.debug("Query returned %d rows", len(rows))
 
-            courts = []
-            for i, row in enumerate(rows):
-                court_id = row[0]
+            # Batch-load every court's time slots in one query on this
+            # connection, avoiding an N+1 connection-per-court pattern.
+            court_ids = [row[0] for row in rows]
+            slots_by_court = self._load_time_slots_bulk(conn, court_ids)
 
-                # Load time slots for this court
-                time_slots = self._load_time_slots(
-                    court_id, row[6]
-                )  # row[6] is the date
+            courts = []
+            for row in rows:
+                court_id = row[0]
+                time_slots = slots_by_court.get(court_id, [])
 
                 court = Court(
                     name=row[1],
@@ -464,12 +477,9 @@ class Database:
                     price=row[8],
                 )
                 courts.append(court)
-                logger.debug(
-                    "Loaded court %d: %s with %d time slots",
-                    i + 1,
-                    court.name,
-                    len(time_slots),
-                )
+
+            # Sort chronologically (date is MM/DD/YYYY text), then by sport/name.
+            courts.sort(key=lambda c: (date_sort_key(c.date), c.sport_type, c.name))
 
             logger.info("Retrieved %d courts from database", len(courts))
         finally:
@@ -477,100 +487,91 @@ class Database:
 
         return courts
 
-    def _load_time_slots(self, court_id: int, date: str) -> List[TimeSlot]:
-        """Load time slots for a specific court and date."""
+    def _load_time_slots_bulk(
+        self, conn: object, court_ids: List[int]
+    ) -> dict[int, List[TimeSlot]]:
+        """Load time slots for many courts in a single query.
+
+        Returns a mapping of court_id -> chronologically sorted time slots,
+        reusing the provided connection.
+        """
+        if not court_ids:
+            return {}
+
         placeholder = self.adapter.get_placeholder()
+        placeholders = ", ".join(placeholder for _ in court_ids)
+        cursor = self.adapter.execute(
+            conn,
+            f"""
+            SELECT court_id, start_time, end_time, status
+            FROM time_slots
+            WHERE court_id IN ({placeholders})
+        """,  # noqa: S608
+            tuple(court_ids),
+        )
+        rows = self.adapter.fetchall(cursor)
 
-        conn = self.adapter.connect()
-        try:
-            cursor = self.adapter.execute(
-                conn,
-                f"""
-                SELECT start_time, end_time, status
-                FROM time_slots
-                WHERE court_id = {placeholder}
-                    AND date = {placeholder}
-                ORDER BY start_time
-            """,  # noqa: S608
-                (court_id, date),
+        slots_by_court: dict[int, List[TimeSlot]] = {}
+        for court_id, start_time, end_time, status in rows:
+            slots_by_court.setdefault(court_id, []).append(
+                TimeSlot(start_time=start_time, end_time=end_time, status=status)
             )
-            rows = self.adapter.fetchall(cursor)
 
-            time_slots = []
-            for row in rows:
-                time_slot = TimeSlot(start_time=row[0], end_time=row[1], status=row[2])
-                time_slots.append(time_slot)
+        # start_time is 12-hour text ("8:00 am"); sort numerically.
+        for slots in slots_by_court.values():
+            slots.sort(key=lambda s: time_sort_key(s.start_time))
 
-            return time_slots
-        finally:
-            self.adapter.close(conn)
+        return slots_by_court
 
     def clear_old_data(self, days_old: int = 7) -> None:
         """Remove court data older than specified days."""
         logger.info("Clearing data older than %d days", days_old)
 
         placeholder = self.adapter.get_placeholder()
+        # Backend-specific "older than N days" predicate (SQLite's datetime()
+        # function does not exist in PostgreSQL).
+        older_than = self.adapter.older_than_clause(placeholder)
         conn = self.adapter.connect()
         try:
             # First count how many will be deleted
             cursor = self.adapter.execute(
                 conn,
-                f"""
-                SELECT COUNT(*) FROM courts
-                WHERE last_updated < datetime(
-                    'now', '-' || {placeholder} || ' days'
-                )
-            """,  # noqa: S608
+                f"SELECT COUNT(*) FROM courts WHERE {older_than}",  # noqa: S608
                 (days_old,),
             )
-            count_to_delete = self.adapter.fetchone(cursor)[0]
-            logger.debug("Found %d court records to delete", count_to_delete)
+            count_to_delete = self.adapter.fetch_scalar(cursor, 0)
+            logger.debug("Found %s court records to delete", count_to_delete)
 
             # Count time slots to be deleted
             cursor = self.adapter.execute(
                 conn,
-                f"""
-                SELECT COUNT(*) FROM time_slots
-                WHERE last_updated < datetime(
-                    'now', '-' || {placeholder} || ' days'
-                )
-            """,  # noqa: S608
+                f"SELECT COUNT(*) FROM time_slots WHERE {older_than}",  # noqa: S608
                 (days_old,),
             )
-            time_slots_to_delete = self.adapter.fetchone(cursor)[0]
+            time_slots_to_delete = self.adapter.fetch_scalar(cursor, 0)
             logger.debug(
-                "Found %d time slot records to delete",
+                "Found %s time slot records to delete",
                 time_slots_to_delete,
             )
 
             # Delete time slots first (due to foreign key constraints)
             self.adapter.execute(
                 conn,
-                f"""
-                DELETE FROM time_slots
-                WHERE last_updated < datetime(
-                    'now', '-' || {placeholder} || ' days'
-                )
-            """,  # noqa: S608
+                f"DELETE FROM time_slots WHERE {older_than}",  # noqa: S608
                 (days_old,),
             )
 
             # Delete courts
             self.adapter.execute(
                 conn,
-                f"""
-                DELETE FROM courts
-                WHERE last_updated < datetime(
-                    'now', '-' || {placeholder} || ' days'
-                )
-            """,  # noqa: S608
+                f"DELETE FROM courts WHERE {older_than}",  # noqa: S608
                 (days_old,),
             )
 
             self.adapter.commit(conn)
 
             logger.info(
-                "Deleted %d court records and %d time slot records",
+                "Deleted %s court records and %s time slot records",
                 count_to_delete,
                 time_slots_to_delete,
             )
@@ -584,13 +585,13 @@ class Database:
         conn = self.adapter.connect()
         try:
             cursor = self.adapter.execute(conn, "SELECT COUNT(*) FROM courts")
-            total_courts = self.adapter.fetchone(cursor)[0]
-            logger.debug("Total courts in database: %d", total_courts)
+            total_courts = self.adapter.fetch_scalar(cursor, 0)
+            logger.debug("Total courts in database: %s", total_courts)
 
             cursor = self.adapter.execute(
                 conn, "SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type"
             )
-            sport_counts = dict(self.adapter.fetchall(cursor))
+            sport_counts: dict = dict(self.adapter.fetchall(cursor))
             logger.debug("Sport breakdown: %s", sport_counts)
 
             cursor = self.adapter.execute(
@@ -599,11 +600,11 @@ class Database:
                 " FROM courts"
                 " GROUP BY availability_status",
             )
-            availability_counts = dict(self.adapter.fetchall(cursor))
+            availability_counts: dict = dict(self.adapter.fetchall(cursor))
             logger.debug("Availability breakdown: %s", availability_counts)
 
             cursor = self.adapter.execute(conn, "SELECT MAX(last_updated) FROM courts")
-            last_update = self.adapter.fetchone(cursor)[0]
+            last_update = self.adapter.fetch_scalar(cursor)
             logger.debug("Last update: %s", last_update)
 
             stats = {

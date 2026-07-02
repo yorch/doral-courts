@@ -4,14 +4,11 @@ from typing import Optional
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 
-from ...core.database import Database
-from ...core.scraper import Scraper
 from ...utils.date_utils import parse_date_input
-from ...utils.file_utils import save_html_data, save_json_data
 from ...utils.logger import get_logger
+from .._shared import fetch_and_store
 
 logger = get_logger(__name__)
 console = Console()
@@ -48,53 +45,10 @@ def slots(
         f"Available only: {available_only}"
     )
 
-    db = Database()
-
-    # Always fetch fresh data from website
-    logger.info("Fetching fresh data from website")
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("Fetching court data...", total=None)
-
-        scraper = Scraper()
-
-        # Check if we should save data
-        save_data = ctx.obj.get("save_data", False)
-        if save_data:
-            courts, html_content = scraper.fetch_courts_with_html(date=parsed_date)
-        else:
-            courts = scraper.fetch_courts(date=parsed_date)
-            html_content = ""
-
-        if courts:
-            logger.info(f"Successfully fetched {len(courts)} courts from website")
-            # Store in database for historical tracking
-            inserted_count = db.insert_courts(courts)
-            logger.debug(
-                f"Inserted/updated {inserted_count} courts in database for tracking"
-            )
-            progress.update(task, description=f"Fetched {len(courts)} courts")
-
-            # Save data if requested
-            if save_data:
-                try:
-                    html_path = save_html_data(html_content, "_slots")
-                    json_path = save_json_data(
-                        courts, "_slots", scraper.get_last_request_url()
-                    )
-                    console.print("[green]Data saved to:[/green]")
-                    console.print(f"  HTML: {html_path}")
-                    console.print(f"  JSON: {json_path}")
-                except Exception as e:
-                    logger.error(f"Error saving data: {e}")
-                    console.print(f"[red]Error saving data: {e}[/red]")
-        else:
-            logger.error("No court data could be retrieved from website")
-            console.print("[red]Unable to fetch court data from website.[/red]")
-            return
+    # Fetch fresh data, store it, and optionally save it to disk.
+    courts, _ = fetch_and_store(ctx, parsed_date, suffix="_slots")
+    if not courts:
+        return
 
     # Apply court filter to fresh data
     if court:

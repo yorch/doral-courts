@@ -42,8 +42,8 @@ source .venv/bin/activate
 # On Windows:
 .venv\Scripts\activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (editable install)
+pip install -e .
 
 # Run the application
 doral-courts --help

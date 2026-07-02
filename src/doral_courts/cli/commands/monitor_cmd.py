@@ -134,8 +134,8 @@ def monitor(
             # Calculate dates to monitor
             dates_to_monitor = []
             for day_offset in range(days_ahead):
-                target_date = datetime.now() + timedelta(days=day_offset)
-                dates_to_monitor.append(target_date.strftime("%m/%d/%Y"))
+                day_date = datetime.now() + timedelta(days=day_offset)
+                dates_to_monitor.append(day_date.strftime("%m/%d/%Y"))
 
             # Fetch data for each date
             courts_this_poll = 0

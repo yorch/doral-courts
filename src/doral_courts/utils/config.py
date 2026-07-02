@@ -1,7 +1,7 @@
 """Configuration management for Doral Courts CLI."""
 
 from pathlib import Path
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 import yaml
 
@@ -90,7 +90,7 @@ class Config:
             }
             self._write_config(default_config)
 
-    def _read_config(self) -> Dict[str, object]:
+    def _read_config(self) -> Dict[str, Any]:
         """
         Read configuration from YAML file.
 
@@ -102,7 +102,7 @@ class Config:
         """
         try:
             with open(self.config_path, "r") as f:
-                config = yaml.safe_load(f) or {}
+                config: Dict[str, Any] = yaml.safe_load(f) or {}
                 logger.debug(f"Loaded config: {config}")
                 return config
         except yaml.YAMLError as e:
@@ -112,7 +112,7 @@ class Config:
             logger.error(f"Unexpected error reading config: {e}")
             return {}
 
-    def _write_config(self, config: Dict[str, object]) -> None:
+    def _write_config(self, config: Dict[str, Any]) -> None:
         """
         Write configuration to YAML file.
 
@@ -138,7 +138,7 @@ class Config:
             List of court names
         """
         config = self._read_config()
-        return config.get("favorites", {}).get("courts", [])
+        return list(config.get("favorites", {}).get("courts", []))
 
     def add_favorite(self, court_name: str) -> bool:
         """
@@ -198,7 +198,7 @@ class Config:
             Dictionary of query name -> query parameters
         """
         config = self._read_config()
-        return config.get("queries", {})
+        return dict(config.get("queries", {}))
 
     def get_query(self, query_name: str) -> Optional[Dict[str, str]]:
         """
@@ -262,7 +262,8 @@ class Config:
             Configuration value or None
         """
         config = self._read_config()
-        return config.get("defaults", {}).get(key)
+        value = config.get("defaults", {}).get(key)
+        return cast(Optional[Union[str, int, float, bool]], value)
 
     def set_default(self, key: str, value: Union[str, int, float, bool, None]) -> None:
         """
@@ -297,7 +298,7 @@ class Config:
                 "sqlite": {"path": "doral_courts.db"},
             }
 
-        return db_config
+        return dict(db_config)
 
     def get_database_type(self) -> str:
         """
@@ -307,4 +308,4 @@ class Config:
             Database type: 'sqlite' or 'postgresql'
         """
         db_config = self.get_database_config()
-        return db_config.get("type", "sqlite")
+        return str(db_config.get("type", "sqlite"))

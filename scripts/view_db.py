@@ -1,9 +1,40 @@
 #!/usr/bin/env python3
-"""Quick database viewer script for Doral Courts database."""
+"""Quick database viewer script for Doral Courts (SQLite backend)."""
 
 import sqlite3
 import sys
 from pathlib import Path
+
+
+def resolve_db_path(explicit_path=None):
+    """Resolve the SQLite database path.
+
+    Uses an explicitly provided path when given; otherwise reads the
+    configured backend from ~/.doral-courts/config.yaml. Returns None if the
+    configured backend is not SQLite (this viewer only supports SQLite).
+    """
+    if explicit_path:
+        return explicit_path
+
+    try:
+        from doral_courts.utils.config import Config
+
+        db_config = Config().get_database_config()
+    except Exception:
+        # Config/package unavailable; fall back to the conventional default.
+        return "doral_courts.db"
+
+    db_type = str(db_config.get("type", "sqlite")).lower()
+    if db_type != "sqlite":
+        print(
+            f"❌ Configured database backend is '{db_type}'. "
+            "view_db.py only supports SQLite.\n"
+            "   Use 'uv run doral-courts stats' / 'history' for PostgreSQL."
+        )
+        return None
+
+    sqlite_config = db_config.get("sqlite", {})
+    return sqlite_config.get("path", "doral_courts.db")
 
 
 def view_database(db_path="doral_courts.db", limit=50):
@@ -118,6 +149,8 @@ def view_database(db_path="doral_courts.db", limit=50):
 
 
 if __name__ == "__main__":
-    db_path = sys.argv[1] if len(sys.argv) > 1 else "doral_courts.db"
+    explicit = sys.argv[1] if len(sys.argv) > 1 else None
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 50
-    view_database(db_path, limit)
+    resolved = resolve_db_path(explicit)
+    if resolved:
+        view_database(resolved, limit)

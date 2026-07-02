@@ -6,14 +6,12 @@ from typing import Optional
 
 import click
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from ...core.database import Database
-from ...core.scraper import Scraper
 from ...display.tables import display_courts_table
 from ...utils.date_utils import parse_date_input
-from ...utils.file_utils import save_html_data, save_json_data
 from ...utils.logger import get_logger
+from .._shared import fetch_and_store
 
 logger = get_logger(__name__)
 console = Console()
@@ -69,57 +67,20 @@ def watch(
             console.print(f"[bold]Last updated: {now_str}[/bold]\n")
 
             db = Database()
-            scraper = Scraper()
 
-            with Progress(
-                SpinnerColumn(),
-                TextColumn("[progress.description]{task.description}"),
-                console=console,
-            ) as progress:
-                task = progress.add_task("Fetching latest data...", total=None)
+            # Fetch fresh data, store it, and optionally save it to disk.
+            timestamp = datetime.now().strftime("%H%M%S")
+            logger.debug("Fetching fresh court data for watch update")
+            fetch_and_store(
+                ctx,
+                parsed_date,
+                sport=sport,
+                suffix=f"_watch_{timestamp}",
+                db=db,
+                description="Fetching latest data...",
+            )
 
-                logger.debug("Fetching fresh court data for watch update")
-
-                # Check if we should save data
-                save_data = ctx.obj.get("save_data", False)
-                if save_data:
-                    courts, html_content = scraper.fetch_courts_with_html(
-                        date=parsed_date, sport_filter=sport
-                    )
-                else:
-                    courts = scraper.fetch_courts(date=parsed_date, sport_filter=sport)
-                    html_content = ""
-
-                if courts:
-                    logger.debug(f"Fetched {len(courts)} courts for watch update")
-                    inserted_count = db.insert_courts(courts)
-                    logger.debug(f"Updated {inserted_count} courts in database")
-                    progress.update(task, description=f"Updated {len(courts)} courts")
-
-                    # Save data if requested
-                    if save_data:
-                        try:
-                            timestamp = datetime.now().strftime("%H%M%S")
-                            html_path = save_html_data(
-                                html_content, f"_watch_{timestamp}"
-                            )
-                            json_path = save_json_data(
-                                courts,
-                                f"_watch_{timestamp}",
-                                scraper.get_last_request_url(),
-                            )
-                            logger.info(
-                                f"Watch data saved - "
-                                f"HTML: {html_path}, "
-                                f"JSON: {json_path}"
-                            )
-                        except Exception as e:
-                            logger.error(f"Error saving watch data: {e}")
-                else:
-                    logger.error("No courts could be retrieved during watch update")
-                    progress.update(task, description="Failed to fetch court data")
-
-            # Display current data
+            # Display current data from the database
             courts = db.get_courts(
                 sport_type=sport.title() if sport else None, date=parsed_date
             )

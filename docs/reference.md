@@ -1184,7 +1184,7 @@ uv run pytest tests/unit/test_html_extractor.py -v
 ### v0.1.0 (2025-10-31)
 
 - Initial release
-- 10 commands implemented
+- 14 commands implemented
 - Cloudflare bypass working
 - SQLite database storage
 - Rich CLI interface

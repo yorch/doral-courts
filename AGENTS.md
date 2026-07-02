@@ -68,19 +68,22 @@ uv run mypy src/
 ```
 src/doral_courts/
 ├── cli/                    # Command-line interface
-│   ├── commands/          # Individual command modules (10 commands)
+│   ├── commands/          # Individual command modules (14 commands)
+│   ├── _shared.py        # Shared fetch -> store -> save helper
 │   └── main.py           # CLI entry point and command registration
 ├── core/                  # Core business logic
 │   ├── scraper.py        # Web scraping with Cloudflare bypass
 │   ├── html_extractor.py # HTML parsing and data models
-│   └── database.py       # SQLite database operations
+│   ├── db_adapter.py     # SQLite/PostgreSQL backend adapters
+│   └── database.py       # Database operations (backend-agnostic)
 ├── display/               # UI formatting and display
 │   ├── tables.py         # Rich table displays
 │   ├── detailed.py       # Detailed data views
 │   └── lists.py          # List-based displays
 └── utils/                 # Utility functions
     ├── logger.py         # Logging configuration
-    ├── date_utils.py     # Date parsing utilities
+    ├── config.py         # User config (~/.doral-courts/config.yaml)
+    ├── date_utils.py     # Date parsing and sorting utilities
     └── file_utils.py     # File I/O operations
 ```
 
@@ -114,7 +117,7 @@ class Court:
     availability_status: str # "Available", "Fully Booked"
     date: str               # "MM/DD/YYYY"
     time_slots: List[TimeSlot]
-    price: str = None       # "$10.00"
+    price: Optional[str] = None  # "$10.00"
 ```
 
 ### TimeSlot Object
@@ -138,16 +141,21 @@ The scraper handles complex challenges:
 
 ## Database Integration
 
-- **SQLite**: Local database (`doral_courts.db`) for historical data tracking
+- **Multiple Backends**: SQLite (default, `doral_courts.db`) or PostgreSQL, selected
+  via `~/.doral-courts/config.yaml`. Backend-specific SQL lives in `db_adapter.py`.
 - **Automatic Storage**: All fetched data is automatically stored for historical analysis
-- **Deduplication**: Prevents duplicate entries while allowing updates
+- **Deduplication**: Uses `INSERT ... ON CONFLICT(name, date) DO UPDATE` so re-scrapes
+  update the existing row (and its time slots) rather than creating duplicates. The
+  natural key is `(name, date)`.
 
 ## Command Categories
 
 1. **Data Fetching Commands**: `list`, `slots`, `data` - Always fetch fresh data
 2. **List Commands**: `list-courts`, `list-locations`, `list-available-slots` - Specialized views
 3. **Historical Commands**: `history`, `stats` - Use cached database data
-4. **Utility Commands**: `cleanup`, `watch` - Data management and monitoring
+4. **Favorites & Queries**: `favorites`, `query` - Manage saved courts and config-defined queries
+5. **Monitoring & Analytics**: `monitor`, `analyze`, `watch` - Background polling and trend analysis
+6. **Utility Commands**: `cleanup` - Data management
 
 ## Development Guidelines
 

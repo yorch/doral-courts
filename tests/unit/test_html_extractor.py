@@ -1,11 +1,13 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from bs4 import BeautifulSoup
 
-from doral_courts.core.html_extractor import (Court,
-                                              CourtAvailabilityHTMLExtractor,
-                                              TimeSlot)
+from doral_courts.core.html_extractor import (
+    Court,
+    CourtAvailabilityHTMLExtractor,
+    TimeSlot,
+)
 
 
 class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
@@ -460,7 +462,7 @@ class TestCourtAvailabilityHTMLExtractor(unittest.TestCase):
         """
         soup = BeautifulSoup(html, "html.parser")
 
-        courts = self.extractor.parse_court_data(soup)
+        self.extractor.parse_court_data(soup)
 
         # Verify that debug and info logging calls were made
         mock_logger.debug.assert_called()

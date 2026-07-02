@@ -63,16 +63,31 @@ select = ["E", "W", "F", "I", "N", "B", "A", "S", "T", "ANN"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["S101"]  # Allow assert in tests
+# In tests: allow assert (S101), skip annotation requirements (ANN), and don't
+# enforce line length on embedded HTML/JSON fixtures (E501).
+"tests/*" = ["S101", "ANN", "E501"]
 
 [tool.mypy]
 python_version = "3.13"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
+# Third-party libraries without type stubs.
+[[tool.mypy.overrides]]
+module = ["cloudscraper", "bs4", "psycopg2", "yaml", "requests"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+# Floor below current coverage; ratchet up as the suite grows.
+fail_under = 45

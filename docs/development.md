@@ -31,17 +31,23 @@ src/doral_courts/
 The CLI uses a modular command structure where each command is in its own module:
 
 ```
-cli/commands/
-├── list_cmd.py                # Main court listing command
-├── stats_cmd.py               # Database statistics
-├── slots_cmd.py               # Time slot details
-├── data_cmd.py                # Comprehensive data view
-├── cleanup_cmd.py             # Data cleanup
-├── history_cmd.py             # Historical data
-├── watch_cmd.py               # Real-time monitoring
-├── list_available_slots_cmd.py # Available slots listing
-├── list_courts_cmd.py         # Court names listing
-└── list_locations_cmd.py      # Location listing
+cli/
+├── _shared.py                 # Shared fetch -> store -> save helper
+└── commands/
+    ├── list_cmd.py                # Main court listing command
+    ├── stats_cmd.py               # Database statistics
+    ├── slots_cmd.py               # Time slot details
+    ├── data_cmd.py                # Comprehensive data view
+    ├── cleanup_cmd.py             # Data cleanup
+    ├── history_cmd.py             # Historical data
+    ├── watch_cmd.py               # Real-time monitoring
+    ├── monitor_cmd.py             # Continuous background polling
+    ├── analyze_cmd.py             # Booking velocity / pattern analysis
+    ├── favorites_cmd.py           # Favorite courts management
+    ├── query_cmd.py               # Run config-defined saved queries
+    ├── list_available_slots_cmd.py # Available slots listing
+    ├── list_courts_cmd.py         # Court names listing
+    └── list_locations_cmd.py      # Location listing
 ```
 
 Each command module:
@@ -176,19 +182,16 @@ uv run pytest --cov=src
 
 # Run specific test file
 uv run pytest tests/unit/test_html_extractor.py -v
-
-# Watch mode for development
-uv run pytest --watch
 ```
 
 ### Code Quality
 
 ```bash
 # Linting with ruff
-uv run ruff check src/
+uv run ruff check src/ tests/
 
 # Formatting with ruff
-uv run ruff format src/
+uv run ruff format src/ tests/
 
 # Type checking with mypy
 uv run mypy src/
@@ -206,9 +209,8 @@ doral-courts/
 │       ├── display/            # UI formatting
 │       └── utils/              # Utility functions
 ├── tests/                      # Test suite
-│   ├── unit/                   # Unit tests
-│   ├── integration/            # Integration tests
-│   └── fixtures/               # Test data
+│   ├── conftest.py             # Shared pytest fixtures
+│   └── unit/                   # Unit tests
 ├── docs/                       # Documentation
 ├── data/                       # Exported data files
 ├── pyproject.toml              # Project configuration
