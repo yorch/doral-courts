@@ -10,7 +10,7 @@ from ..utils.logger import setup_logging
 try:
     __version__ = _pkg_version("doral-courts")
 except PackageNotFoundError:  # running from source without an installed dist
-    __version__ = "0.2.0"
+    __version__ = "0.2.1"
 from .commands.analyze_cmd import analyze
 from .commands.cleanup_cmd import cleanup
 from .commands.data_cmd import data
