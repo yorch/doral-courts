@@ -44,7 +44,9 @@ def list_available_slots(
         return
 
     logger.info("Starting available slots listing - fetching fresh data")
-    logger.debug(f"Date: {date} -> {parsed_date}, Sport: {sport}, Location: {location}")
+    logger.debug(
+        "Date: %s -> %s, Sport: %s, Location: %s", date, parsed_date, sport, location
+    )
 
     # Fetch fresh data (sport filtering is applied by the scraper), store it,
     # and optionally save it to disk.
@@ -65,10 +67,12 @@ def list_available_slots(
             if location.lower() in court.location.lower()
         ]
         logger.debug(
-            f"Applied location filter '{location}': {len(filtered_courts)} courts"
+            "Applied location filter '%s': %s courts",
+            location,
+            len(filtered_courts),
         )
 
-    logger.info(f"Found {len(filtered_courts)} courts for available slots display")
+    logger.info("Found %s courts for available slots display", len(filtered_courts))
 
     if not filtered_courts:
         console.print("[red]No courts found matching your criteria.[/red]")

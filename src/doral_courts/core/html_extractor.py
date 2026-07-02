@@ -223,13 +223,22 @@ class CourtAvailabilityHTMLExtractor:
                         class_cell.get_text(strip=True) if class_cell else ""
                     )
 
-                    # Determine sport type from class description or name
-                    sport_type = (
-                        "Tennis"
-                        if "tennis" in class_description.lower()
-                        or "tennis" in name.lower()
-                        else "Pickleball"
-                    )
+                    # Determine sport type from class description or name.
+                    # Detect each known sport explicitly; if neither matches,
+                    # default to Pickleball but log it so mislabeling is visible.
+                    haystack = f"{class_description} {name}".lower()
+                    if "tennis" in haystack:
+                        sport_type = "Tennis"
+                    elif "pickleball" in haystack:
+                        sport_type = "Pickleball"
+                    else:
+                        sport_type = "Pickleball"
+                        logger.debug(
+                            "Could not determine sport for '%s' (class: '%s'); "
+                            "defaulting to Pickleball",
+                            name,
+                            class_description,
+                        )
 
                     # Extract capacity
                     capacity_cell = row.find("td", {"data-title": "Capacity"})

@@ -1,6 +1,6 @@
 [project]
 name = "doral-courts"
-version = "0.1.0"
+version = "0.2.0"
 description = "CLI app for showing Doral Tennis and Pickleball Courts availability"
 readme = "README.md"
 license = {text = "MIT"}
@@ -59,7 +59,8 @@ target-version = "py313"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "W", "F", "I", "N", "B", "A", "S", "T", "ANN"]
+# G004 forbids f-strings in logging calls (use lazy %-style formatting).
+select = ["E", "W", "F", "I", "N", "B", "A", "S", "T", "ANN", "G004"]
 ignore = []
 
 [tool.ruff.lint.per-file-ignores]
@@ -90,4 +91,4 @@ omit = ["tests/*"]
 [tool.coverage.report]
 show_missing = true
 # Floor below current coverage; ratchet up as the suite grows.
-fail_under = 45
+fail_under = 60

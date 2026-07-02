@@ -48,8 +48,8 @@ def watch(
         console.print(f"[red]Error: {e}[/red]")
         return
 
-    logger.info(f"Starting watch mode with {interval}s interval")
-    logger.debug(f"Watch filters - Sport: {sport}, Date: {date} -> {parsed_date}")
+    logger.info("Starting watch mode with %ss interval", interval)
+    logger.debug("Watch filters - Sport: %s, Date: %s -> %s", sport, date, parsed_date)
 
     console.print(
         f"[blue]Monitoring court availability every "
@@ -60,7 +60,7 @@ def watch(
     try:
         while True:
             update_count += 1
-            logger.debug(f"Watch update #{update_count}")
+            logger.debug("Watch update #%s", update_count)
 
             console.clear()
             now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -85,7 +85,7 @@ def watch(
                 sport_type=sport.title() if sport else None, date=parsed_date
             )
 
-            logger.debug(f"Displaying {len(courts)} courts in watch mode")
+            logger.debug("Displaying %s courts in watch mode", len(courts))
 
             if courts:
                 display_courts_table(courts)
@@ -98,7 +98,7 @@ def watch(
                 )
 
             console.print(f"\n[dim]Next update in {interval} seconds...[/dim]")
-            logger.debug(f"Waiting {interval} seconds before next update")
+            logger.debug("Waiting %s seconds before next update", interval)
             time.sleep(interval)
 
     except KeyboardInterrupt:

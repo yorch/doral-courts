@@ -57,8 +57,12 @@ def history(
 
     logger.info("Starting historical data display from database")
     logger.debug(
-        f"Filters - Sport: {sport}, Status: {status}, "
-        f"Date: {date} -> {parsed_date}, Mode: {mode}"
+        "Filters - Sport: %s, Status: %s, Date: %s -> %s, Mode: %s",
+        sport,
+        status,
+        date,
+        parsed_date,
+        mode,
     )
 
     db = Database()
@@ -71,7 +75,7 @@ def history(
         date=parsed_date,
     )
 
-    logger.info(f"Found {len(courts)} historical records matching criteria")
+    logger.info("Found %s historical records matching criteria", len(courts))
 
     if not courts:
         console.print(

@@ -26,7 +26,7 @@ def save_html_data(html_content: str, filename_suffix: str = "") -> str:
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-    logger.info(f"Saved HTML data to {filepath}")
+    logger.info("Saved HTML data to %s", filepath)
     return str(filepath)
 
 
@@ -77,5 +77,5 @@ def save_json_data(
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(json_data, f, indent=2, ensure_ascii=False)
 
-    logger.info(f"Saved JSON data to {filepath}")
+    logger.info("Saved JSON data to %s", filepath)
     return str(filepath)

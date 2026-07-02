@@ -41,8 +41,11 @@ def slots(
 
     logger.info("Starting detailed time slots display - fetching fresh data")
     logger.debug(
-        f"Filters - Court: {court}, Date: {date} -> {parsed_date}, "
-        f"Available only: {available_only}"
+        "Filters - Court: %s, Date: %s -> %s, Available only: %s",
+        court,
+        date,
+        parsed_date,
+        available_only,
     )
 
     # Fetch fresh data, store it, and optionally save it to disk.

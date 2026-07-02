@@ -15,14 +15,14 @@ console = Console()
 @click.pass_context
 def cleanup(ctx: click.Context, days: int) -> None:
     """Clean up old court data."""
-    logger.info(f"Starting cleanup of data older than {days} days")
+    logger.info("Starting cleanup of data older than %s days", days)
 
     db = Database()
 
     # Get count before cleanup for logging
     stats_before = db.get_stats()
     total_before = stats_before["total_courts"]
-    logger.debug(f"Total courts before cleanup: {total_before}")
+    logger.debug("Total courts before cleanup: %s", total_before)
 
     db.clear_old_data(days)
 
@@ -31,8 +31,8 @@ def cleanup(ctx: click.Context, days: int) -> None:
     total_after = stats_after["total_courts"]
     removed_count = total_before - total_after
 
-    logger.info(f"Cleanup completed. Removed {removed_count} old records")
-    logger.debug(f"Courts remaining: {total_after}")
+    logger.info("Cleanup completed. Removed %s old records", removed_count)
+    logger.debug("Courts remaining: %s", total_after)
 
     console.print(
         f"[green]Cleaned up data older than {days} days."

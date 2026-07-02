@@ -59,14 +59,14 @@ class Config:
             self.config_dir = get_config_dir()
             self.config_path = self.config_dir / "config.yaml"
 
-        logger.debug(f"Config path: {self.config_path}")
+        logger.debug("Config path: %s", self.config_path)
         self._ensure_config_exists()
 
     def _ensure_config_exists(self) -> None:
         """Create config file with defaults if it doesn't exist."""
         # Create default config file if needed
         if not self.config_path.exists():
-            logger.info(f"Creating default config file: {self.config_path}")
+            logger.info("Creating default config file: %s", self.config_path)
             default_config = {
                 "favorites": {"courts": []},
                 "queries": {},
@@ -103,13 +103,13 @@ class Config:
         try:
             with open(self.config_path, "r") as f:
                 config: Dict[str, Any] = yaml.safe_load(f) or {}
-                logger.debug(f"Loaded config: {config}")
+                logger.debug("Loaded config: %s", config)
                 return config
         except yaml.YAMLError as e:
-            logger.error(f"Error reading config file: {e}")
+            logger.error("Error reading config file: %s", e)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error reading config: {e}")
+            logger.error("Unexpected error reading config: %s", e)
             return {}
 
     def _write_config(self, config: Dict[str, Any]) -> None:
@@ -125,9 +125,9 @@ class Config:
         try:
             with open(self.config_path, "w") as f:
                 yaml.safe_dump(config, f, default_flow_style=False, sort_keys=False)
-                logger.debug(f"Wrote config: {config}")
+                logger.debug("Wrote config: %s", config)
         except Exception as e:
-            logger.error(f"Error writing config file: {e}")
+            logger.error("Error writing config file: %s", e)
             raise
 
     def get_favorites(self) -> List[str]:
@@ -154,7 +154,7 @@ class Config:
         favorites = config.get("favorites", {}).get("courts", [])
 
         if court_name in favorites:
-            logger.warning(f"Court '{court_name}' already in favorites")
+            logger.warning("Court '%s' already in favorites", court_name)
             return False
 
         favorites.append(court_name)
@@ -163,7 +163,7 @@ class Config:
         config["favorites"]["courts"] = favorites
 
         self._write_config(config)
-        logger.info(f"Added '{court_name}' to favorites")
+        logger.info("Added '%s' to favorites", court_name)
         return True
 
     def remove_favorite(self, court_name: str) -> bool:
@@ -180,14 +180,14 @@ class Config:
         favorites = config.get("favorites", {}).get("courts", [])
 
         if court_name not in favorites:
-            logger.warning(f"Court '{court_name}' not in favorites")
+            logger.warning("Court '%s' not in favorites", court_name)
             return False
 
         favorites.remove(court_name)
         config["favorites"]["courts"] = favorites
 
         self._write_config(config)
-        logger.info(f"Removed '{court_name}' from favorites")
+        logger.info("Removed '%s' from favorites", court_name)
         return True
 
     def get_queries(self) -> Dict[str, Dict[str, str]]:
@@ -227,7 +227,7 @@ class Config:
 
         config["queries"][query_name] = parameters
         self._write_config(config)
-        logger.info(f"Saved query '{query_name}' with parameters: {parameters}")
+        logger.info("Saved query '%s' with parameters: %s", query_name, parameters)
 
     def remove_query(self, query_name: str) -> bool:
         """
@@ -243,12 +243,12 @@ class Config:
         queries = config.get("queries", {})
 
         if query_name not in queries:
-            logger.warning(f"Query '{query_name}' not found")
+            logger.warning("Query '%s' not found", query_name)
             return False
 
         del config["queries"][query_name]
         self._write_config(config)
-        logger.info(f"Removed query '{query_name}'")
+        logger.info("Removed query '%s'", query_name)
         return True
 
     def get_default(self, key: str) -> Optional[Union[str, int, float, bool]]:
@@ -279,7 +279,7 @@ class Config:
 
         config["defaults"][key] = value
         self._write_config(config)
-        logger.info(f"Set default '{key}' to '{value}'")
+        logger.info("Set default '%s' to '%s'", key, value)
 
     def get_database_config(self) -> Dict[str, object]:
         """

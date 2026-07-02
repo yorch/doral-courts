@@ -52,7 +52,7 @@ def data(
         return
 
     logger.info("Starting comprehensive data display - fetching fresh data")
-    logger.debug(f"Mode: {mode}, Sport: {sport}, Date: {date} -> {parsed_date}")
+    logger.debug("Mode: %s, Sport: %s, Date: %s -> %s", mode, sport, date, parsed_date)
 
     # Fetch fresh data (sport filtering is applied by the scraper), store it,
     # and optionally save it to disk.
@@ -66,7 +66,7 @@ def data(
     if not courts:
         return
 
-    logger.info(f"Found {len(courts)} courts for comprehensive display")
+    logger.info("Found %s courts for comprehensive display", len(courts))
 
     # Display data based on mode
     if mode == "detailed":

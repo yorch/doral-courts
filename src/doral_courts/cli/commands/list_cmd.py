@@ -92,7 +92,11 @@ def list_courts(
 
     logger.info("Starting court listing command - fetching fresh data")
     logger.debug(
-        f"Filters - Sport: {sport}, Status: {status}, Date: {date} -> {parsed_date}"
+        "Filters - Sport: %s, Status: %s, Date: %s -> %s",
+        sport,
+        status,
+        date,
+        parsed_date,
     )
 
     # Fetch fresh data (sport filtering is applied by the scraper), store it,
@@ -111,7 +115,9 @@ def list_courts(
             for court in filtered_courts
             if status.lower() in court.availability_status.lower()
         ]
-        logger.debug(f"Applied status filter '{status}': {len(filtered_courts)} courts")
+        logger.debug(
+            "Applied status filter '%s': %s courts", status, len(filtered_courts)
+        )
 
     if favorites:
         config = Config()
@@ -128,10 +134,11 @@ def list_courts(
             court for court in filtered_courts if court.name in favorite_court_names
         ]
         logger.debug(
-            f"Applied favorites filter: {len(filtered_courts)} courts in favorites"
+            "Applied favorites filter: %s courts in favorites",
+            len(filtered_courts),
         )
 
-    logger.info(f"Found {len(filtered_courts)} courts matching criteria")
+    logger.info("Found %s courts matching criteria", len(filtered_courts))
 
     if not filtered_courts:
         console.print("[red]No courts found matching your criteria.[/red]")
