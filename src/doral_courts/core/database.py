@@ -1,7 +1,7 @@
 from typing import List, Optional
 
 from ..utils.config import Config
-from ..utils.date_utils import date_sort_key, time_sort_key
+from ..utils.date_utils import from_iso_date, time_sort_key, to_iso_date
 from ..utils.logger import get_logger
 from .db_adapter import DatabaseAdapter, create_adapter
 from .html_extractor import Court, TimeSlot
@@ -212,10 +212,45 @@ class Database:
             )
             logger.debug("Created database indexes")
 
+            # Convert any legacy MM/DD/YYYY dates left by older versions to ISO.
+            self._migrate_date_format_to_iso(conn)
+
             self.adapter.commit(conn)
             logger.info("Database initialized successfully")
         finally:
             self.adapter.close(conn)
+
+    def _migrate_date_format_to_iso(self, conn: object) -> None:
+        """Convert any stored ``MM/DD/YYYY`` dates to ISO ``YYYY-MM-DD``.
+
+        Older versions stored dates in ``MM/DD/YYYY`` form, which sorts and
+        range-compares incorrectly as text. This rewrites existing rows in
+        place (preserving historical tracking data) and is idempotent: once
+        converted, no value contains ``/`` so it becomes a no-op. Works on both
+        backends and runs after the tables exist.
+        """
+        placeholder = self.adapter.get_placeholder()
+        for table in ("courts", "time_slots"):
+            cursor = self.adapter.execute(
+                conn,
+                f"SELECT DISTINCT date FROM {table} WHERE date LIKE '%/%'",  # noqa: S608
+            )
+            legacy_dates = [r[0] for r in self.adapter.fetchall(cursor)]
+            for old in legacy_dates:
+                iso = to_iso_date(old)
+                if iso != old:
+                    self.adapter.execute(
+                        conn,
+                        f"UPDATE {table} SET date = {placeholder} "  # noqa: S608
+                        f"WHERE date = {placeholder}",
+                        (iso, old),
+                    )
+            if legacy_dates:
+                logger.info(
+                    "Migrated %d legacy date value(s) to ISO in %s",
+                    len(legacy_dates),
+                    table,
+                )
 
     def _migrate_legacy_unique_constraint(self, conn: object) -> None:
         """Drop the cached courts table if it uses the legacy unique key.
@@ -335,6 +370,10 @@ class Database:
                         "Inserting court %d/%d: %s", i + 1, len(courts), court.name
                     )
 
+                    # Store dates as ISO (YYYY-MM-DD) so SQL ordering and range
+                    # queries are correct; Court.date stays MM/DD/YYYY.
+                    iso_date = to_iso_date(court.date)
+
                     # Insert or update the main court record.
                     self.adapter.execute(
                         conn,
@@ -345,7 +384,7 @@ class Database:
                             court.location,
                             court.capacity,
                             court.availability_status,
-                            court.date,
+                            iso_date,
                             court.time_slot,
                             court.price,
                         ),
@@ -354,7 +393,7 @@ class Database:
                     # Resolve the court id by its natural key. lastrowid is
                     # unreliable across the upsert/backends, so always look up.
                     cursor = self.adapter.execute(
-                        conn, select_id_sql, (court.name, court.date)
+                        conn, select_id_sql, (court.name, iso_date)
                     )
                     court_id = self.adapter.fetch_scalar(cursor)
 
@@ -366,7 +405,7 @@ class Database:
                             court.name,
                         )
                         self.adapter.execute(
-                            conn, delete_slots_sql, (court_id, court.date)
+                            conn, delete_slots_sql, (court_id, iso_date)
                         )
                         self.adapter.executemany(
                             conn,
@@ -377,7 +416,7 @@ class Database:
                                     slot.start_time,
                                     slot.end_time,
                                     slot.status,
-                                    court.date,
+                                    iso_date,
                                 )
                                 for slot in court.time_slots
                             ],
@@ -435,10 +474,12 @@ class Database:
 
         if date:
             query += f" AND date = {placeholder}"  # noqa: S608
-            params.append(date)
+            params.append(to_iso_date(date))
 
-        # Note: dates (MM/DD/YYYY) and the time_slot summary are TEXT, so SQL
-        # ORDER BY sorts them lexicographically (wrong). Sort in Python below.
+        # Dates are stored as ISO (YYYY-MM-DD), which sorts chronologically as
+        # text, so ordering can be done correctly in SQL.
+        query += " ORDER BY date, sport_type, name"
+
         logger.debug("Executing query: %s with params: %s", query, params)
 
         conn = self.adapter.connect()
@@ -464,14 +505,12 @@ class Database:
                     location=row[3],
                     capacity=row[4],
                     availability_status=row[5],
-                    date=row[6],
+                    # Convert stored ISO date back to the app's MM/DD/YYYY form.
+                    date=from_iso_date(row[6]),
                     time_slots=time_slots,
                     price=row[8],
                 )
                 courts.append(court)
-
-            # Sort chronologically (date is MM/DD/YYYY text), then by sport/name.
-            courts.sort(key=lambda c: (date_sort_key(c.date), c.sport_type, c.name))
 
             logger.info("Retrieved %d courts from database", len(courts))
         finally:
