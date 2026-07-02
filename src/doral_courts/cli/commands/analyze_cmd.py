@@ -186,8 +186,8 @@ def _analyze_booking_velocity(
             query,
             (
                 *filter_params,
-                start_date.strftime("%m/%d/%Y"),
-                end_date.strftime("%m/%d/%Y"),
+                start_date.strftime("%Y-%m-%d"),
+                end_date.strftime("%Y-%m-%d"),
             ),
         )
         rows = db.adapter.fetchall(cursor)
@@ -214,7 +214,7 @@ def _analyze_booking_velocity(
 
         # Parse date and check day of week
         try:
-            date_obj = datetime.strptime(date, "%m/%d/%Y")
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
             day_name = date_obj.strftime("%A")
             if day_of_week_filter and day_name != day_of_week_filter:
                 continue
@@ -381,8 +381,8 @@ def _analyze_availability_patterns(
             query,
             (
                 *filter_params,
-                start_date.strftime("%m/%d/%Y"),
-                end_date.strftime("%m/%d/%Y"),
+                start_date.strftime("%Y-%m-%d"),
+                end_date.strftime("%Y-%m-%d"),
             ),
         )
         rows = db.adapter.fetchall(cursor)
@@ -402,7 +402,7 @@ def _analyze_availability_patterns(
         name, location, sport, date, status, time_slot_summary = row
 
         try:
-            date_obj = datetime.strptime(date, "%m/%d/%Y")
+            date_obj = datetime.strptime(date, "%Y-%m-%d")
             day_name = date_obj.strftime("%A")
 
             if day_of_week_filter and day_name != day_of_week_filter:

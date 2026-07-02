@@ -6,8 +6,10 @@ import pytest
 
 from doral_courts.utils.date_utils import (
     date_sort_key,
+    from_iso_date,
     parse_date_input,
     time_sort_key,
+    to_iso_date,
 )
 
 
@@ -71,6 +73,31 @@ class TestDateSortKey:
         keyed = sorted(["bogus", "01/01/2025"], key=date_sort_key)
         assert keyed[0] == "01/01/2025"
         assert keyed[-1] == "bogus"
+
+
+class TestIsoConversion:
+    def test_to_iso_from_mmddyyyy(self):
+        assert to_iso_date("07/12/2025") == "2025-07-12"
+
+    def test_to_iso_idempotent(self):
+        assert to_iso_date("2025-07-12") == "2025-07-12"
+
+    def test_from_iso_to_mmddyyyy(self):
+        assert from_iso_date("2025-07-12") == "07/12/2025"
+
+    def test_from_iso_idempotent(self):
+        assert from_iso_date("07/12/2025") == "07/12/2025"
+
+    def test_round_trip(self):
+        assert from_iso_date(to_iso_date("12/31/2025")) == "12/31/2025"
+
+    def test_unparseable_passthrough(self):
+        assert to_iso_date("garbage") == "garbage"
+        assert from_iso_date("garbage") == "garbage"
+
+    def test_empty_passthrough(self):
+        assert to_iso_date("") == ""
+        assert from_iso_date("") == ""
 
 
 class TestTimeSortKey:

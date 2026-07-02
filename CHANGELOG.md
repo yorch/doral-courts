@@ -5,6 +5,24 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- **`analyze` date ranges across year boundaries**: dates are now stored as ISO
+  `YYYY-MM-DD` instead of `MM/DD/YYYY`, so `WHERE date BETWEEN ... AND ...` and
+  `ORDER BY date` compare chronologically. Previously a range spanning a year
+  boundary (e.g. late December to early January) could return no rows because
+  `MM/DD/YYYY` text sorts `01/...` before `12/...`.
+
+### Changed
+
+- Court dates are stored canonically as ISO in the database and converted back
+  to `MM/DD/YYYY` at the boundary, so `Court.date`, the scraper, and displays
+  are unchanged. Court/slot ordering is now done in SQL.
+- Existing databases are migrated in place on open (legacy `MM/DD/YYYY` values
+  are rewritten to ISO), preserving historical tracking data.
+
 ## [0.2.0]
 
 ### Fixed

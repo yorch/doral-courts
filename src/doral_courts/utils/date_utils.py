@@ -81,6 +81,38 @@ _MAX_DATE = datetime.max
 _MAX_MINUTES = 24 * 60 + 1
 
 
+def to_iso_date(value: str) -> str:
+    """Normalize a date string to ISO ``YYYY-MM-DD`` for database storage.
+
+    ISO dates sort and range-compare correctly as text, unlike ``MM/DD/YYYY``.
+    Accepts the app's usual formats; returns the input unchanged if it can't be
+    parsed (so unexpected values are never silently dropped).
+    """
+    if not value:
+        return value
+    for fmt in ("%m/%d/%Y", "%Y-%m-%d", "%m-%d-%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(value.strip(), fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    return value
+
+
+def from_iso_date(value: str) -> str:
+    """Format a stored ISO date back to ``MM/DD/YYYY`` for display/website use.
+
+    Returns the input unchanged if it can't be parsed.
+    """
+    if not value:
+        return value
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(value.strip(), fmt).strftime("%m/%d/%Y")
+        except ValueError:
+            continue
+    return value
+
+
 def date_sort_key(date_str: str) -> datetime:
     """Return a sortable datetime for a court date string.
 
