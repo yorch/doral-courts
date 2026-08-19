@@ -5,6 +5,29 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Dependencies upgraded to latest**, including four major bumps:
+  `mypy` 1.x → 2.3.1, `rich` 14.x → 15.0.0, `pytest` 8.x → 9.1.1, and
+  `pytest-cov` 6.x → 7.1.0. Also bumped `requests` 2.34.2,
+  `beautifulsoup4` 4.15.0, `click` 8.4.2, `pyyaml` 6.0.3,
+  `psycopg2-binary` 2.9.12, `ruff` 0.16.3, `pre-commit` 4.6.2, and the
+  `hatchling` build requirement to 1.32.0. No source changes were needed:
+  mypy 2.0's `--local-partial-types`/`--strict-bytes` default flips and
+  ruff 0.16's expanded default rule set do not affect this codebase (an
+  explicit `select` list overrides ruff's defaults).
+- **CI actions upgraded**: `actions/checkout` v4 → v7,
+  `actions/setup-python` v5 → v7, and `astral-sh/setup-uv` v4 → v10.0.1.
+  `setup-uv` is pinned to an exact version because upstream stopped
+  publishing floating major tags after v7.
+- **`scripts/` is now linted in CI** (`ruff check`/`ruff format --check`),
+  closing a gap where `pre-commit` checked those files but CI did not.
+  `scripts/view_db.py` is formatted, fully annotated, and `T201` (`print`
+  found) is ignored for `scripts/*` since it is a print-based inspection
+  script.
+
 ## [0.2.1]
 
 ### Fixed

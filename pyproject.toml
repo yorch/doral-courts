@@ -19,17 +19,17 @@ classifiers = [
     "Topic :: Utilities",
 ]
 dependencies = [
-    "requests>=2.32.5",
-    "beautifulsoup4>=4.13.4",
-    "click>=8.2.1",
-    "rich>=14.0.0",
+    "requests>=2.34.2",
+    "beautifulsoup4>=4.15.0",
+    "click>=8.4.2",
+    "rich>=15.0.0",
     "cloudscraper>=1.2.71",
-    "pyyaml>=6.0.2",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
 postgresql = [
-    "psycopg2-binary>=2.9.10",
+    "psycopg2-binary>=2.9.12",
 ]
 
 [project.urls]
@@ -43,15 +43,15 @@ doral-courts = "doral_courts.cli:cli"
 
 [dependency-groups]
 dev = [
-    "pytest>=8.4.1",
-    "pytest-cov>=6.1.1",
-    "ruff>=0.11.0",
-    "mypy>=1.15.0",
-    "pre-commit>=4.2.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.3",
+    "mypy>=2.3.1",
+    "pre-commit>=4.6.2",
 ]
 
 [build-system]
-requires = ["hatchling>=1.27.0"]
+requires = ["hatchling>=1.32.0"]
 build-backend = "hatchling.build"
 
 [tool.ruff]
@@ -67,6 +67,8 @@ ignore = []
 # In tests: allow assert (S101), skip annotation requirements (ANN), and don't
 # enforce line length on embedded HTML/JSON fixtures (E501).
 "tests/*" = ["S101", "ANN", "E501"]
+# view_db.py is a standalone print-based inspection script; `print` is the point.
+"scripts/*" = ["T201"]
 
 [tool.mypy]
 python_version = "3.13"
