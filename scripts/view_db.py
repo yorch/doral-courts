@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 
-def resolve_db_path(explicit_path=None):
+def resolve_db_path(explicit_path: str | None = None) -> str | None:
     """Resolve the SQLite database path.
 
     Uses an explicitly provided path when given; otherwise reads the
@@ -37,7 +37,7 @@ def resolve_db_path(explicit_path=None):
     return sqlite_config.get("path", "doral_courts.db")
 
 
-def view_database(db_path="doral_courts.db", limit=50):
+def view_database(db_path: str = "doral_courts.db", limit: int = 50) -> None:
     """View database contents in a formatted way."""
 
     if not Path(db_path).exists():
@@ -51,8 +51,8 @@ def view_database(db_path="doral_courts.db", limit=50):
     cursor.execute("SELECT COUNT(*) FROM courts")
     total = cursor.fetchone()[0]
 
-    print(f"\n📊 Database Overview")
-    print(f"{'='*60}")
+    print("\n📊 Database Overview")
+    print(f"{'=' * 60}")
     print(f"Total Records: {total}")
 
     if total == 0:
@@ -67,48 +67,58 @@ def view_database(db_path="doral_courts.db", limit=50):
 
     # Sport breakdown
     cursor.execute("SELECT sport_type, COUNT(*) FROM courts GROUP BY sport_type")
-    print(f"\nSport Breakdown:")
+    print("\nSport Breakdown:")
     for sport, count in cursor.fetchall():
         print(f"  • {sport}: {count} records")
 
     # Status breakdown
-    cursor.execute("SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status")
-    print(f"\nAvailability Status:")
+    cursor.execute(
+        "SELECT availability_status, COUNT(*) FROM courts GROUP BY availability_status"
+    )
+    print("\nAvailability Status:")
     for status, count in cursor.fetchall():
         print(f"  • {status}: {count} records")
 
     # Recent records
     print(f"\n📋 Recent Records (Last {limit}):")
-    print(f"{'='*60}")
-    cursor.execute("""
+    print(f"{'=' * 60}")
+    cursor.execute(
+        """
         SELECT name, sport_type, date, availability_status, last_updated
         FROM courts
         ORDER BY last_updated DESC
         LIMIT ?
-    """, (limit,))
+    """,
+        (limit,),
+    )
 
-    print(f"{'Court Name':<30} {'Sport':<12} {'Date':<12} {'Status':<20} {'Updated':<20}")
-    print(f"{'-'*30} {'-'*12} {'-'*12} {'-'*20} {'-'*20}")
+    print(
+        f"{'Court Name':<30} {'Sport':<12} {'Date':<12} {'Status':<20} {'Updated':<20}"
+    )
+    print(f"{'-' * 30} {'-' * 12} {'-' * 12} {'-' * 20} {'-' * 20}")
 
     for row in cursor.fetchall():
         name, sport, date, status, updated = row
         # Truncate long names
         display_name = name[:27] + "..." if len(name) > 30 else name
-        updated_short = updated.split('.')[0] if updated else ""  # Remove microseconds
-        print(f"{display_name:<30} {sport:<12} {date:<12} {status:<20} {updated_short:<20}")
+        updated_short = updated.split(".")[0] if updated else ""  # Remove microseconds
+        print(
+            f"{display_name:<30} {sport:<12} {date:<12} "
+            f"{status:<20} {updated_short:<20}"
+        )
 
     # Time slots analysis
     cursor.execute("SELECT COUNT(*) FROM time_slots")
     time_slots_total = cursor.fetchone()[0]
 
     if time_slots_total > 0:
-        print(f"\n⏰ Time Slots Details")
-        print(f"{'='*60}")
+        print("\n⏰ Time Slots Details")
+        print(f"{'=' * 60}")
         print(f"Total Time Slot Records: {time_slots_total:,}")
 
         # Status breakdown
         cursor.execute("SELECT status, COUNT(*) FROM time_slots GROUP BY status")
-        print(f"\nTime Slot Status:")
+        print("\nTime Slot Status:")
         for status, count in cursor.fetchall():
             percentage = (count / time_slots_total) * 100
             print(f"  • {status}: {count:,} ({percentage:.1f}%)")
@@ -127,25 +137,30 @@ def view_database(db_path="doral_courts.db", limit=50):
         print(f"   Total slots recorded: {slot_count}")
 
         # Sample time slots for recent date
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT c.name, ts.start_time, ts.end_time, ts.status
             FROM time_slots ts
             JOIN courts c ON ts.court_id = c.id
             WHERE ts.date = ?
             ORDER BY c.name, ts.start_time
             LIMIT 5
-        """, (recent_date,))
+        """,
+            (recent_date,),
+        )
 
-        print(f"\n   Sample time slots:")
+        print("\n   Sample time slots:")
         for court_name, start, end, status in cursor.fetchall():
             status_symbol = "✅" if status == "Available" else "❌"
-            court_short = court_name[:25] + "..." if len(court_name) > 28 else court_name
+            court_short = (
+                court_name[:25] + "..." if len(court_name) > 28 else court_name
+            )
             print(f"   {status_symbol} {court_short:<28} {start} - {end}")
 
     conn.close()
     print(f"\n💡 Use 'sqlite3 {db_path}' for custom SQL queries")
-    print(f"💡 Use 'uv run doral-courts history' for filtered views")
-    print(f"💡 Use 'uv run doral-courts slots' for detailed time slot views\n")
+    print("💡 Use 'uv run doral-courts history' for filtered views")
+    print("💡 Use 'uv run doral-courts slots' for detailed time slot views\n")
 
 
 if __name__ == "__main__":

@@ -696,7 +696,7 @@ doral-courts --save-data list --date tomorrow
 
 ### Rich CLI Interface
 
-**Library**: Rich (v14.0.0+)
+**Library**: Rich (v15.0.0+)
 
 **Features**:
 
@@ -1071,24 +1071,26 @@ doral-courts slots --court "DLP Tennis Court 1" --available-only
 
 ### Production Dependencies
 
-- **requests** (>=2.32.0): HTTP library for web requests
-- **beautifulsoup4** (>=4.13.0): HTML parsing
-- **click** (>=8.2.0): CLI framework
-- **rich** (>=14.0.0): Terminal formatting
-- **cloudscraper** (>=1.2.0): Cloudflare bypass
-- **pyyaml** (>=6.0.0): YAML configuration file support
+- **requests** (>=2.34.2): HTTP library for web requests
+- **beautifulsoup4** (>=4.15.0): HTML parsing
+- **click** (>=8.4.2): CLI framework
+- **rich** (>=15.0.0): Terminal formatting
+- **cloudscraper** (>=1.2.71): Cloudflare bypass
+- **pyyaml** (>=6.0.3): YAML configuration file support
 
 ### Optional Dependencies
 
-- **psycopg2-binary** (>=2.9.0): PostgreSQL database support
+- **psycopg2-binary** (>=2.9.12): PostgreSQL database support
 
 ### Development Dependencies
 
-- **pytest** (>=8.4.1): Testing framework
-- **ruff** (>=0.1.0): Linting and formatting
-- **mypy** (>=1.8.0): Type checking
-- **black** (>=23.0.0): Code formatting
-- **pre-commit** (>=3.0.0): Git hooks
+- **pytest** (>=9.1.1): Testing framework
+- **pytest-cov** (>=7.1.0): Coverage reporting
+- **ruff** (>=0.16.3): Linting and formatting
+- **mypy** (>=2.3.1): Type checking
+- **pre-commit** (>=4.6.2): Git hooks
+
+Exact resolved versions are pinned in `uv.lock`.
 
 ---
 
