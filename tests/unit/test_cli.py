@@ -34,9 +34,11 @@ class FakeScraper:
     """Stand-in for Scraper that returns canned data without network access."""
 
     courts_to_return: list = []
+    # Mirrors Scraper.last_block: set when the anti-bot layer rejected us.
+    block_to_return = None
 
     def __init__(self):
-        pass
+        self.last_block = self.block_to_return
 
     def fetch_courts(self, date=None, sport_filter=None):
         return list(self.courts_to_return)
@@ -55,6 +57,8 @@ def mock_io(monkeypatch, tmp_path):
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setattr("doral_courts.cli._shared.Database", MagicMock())
     monkeypatch.setattr("doral_courts.cli._shared.Scraper", FakeScraper)
+    FakeScraper.courts_to_return = []
+    FakeScraper.block_to_return = None
     return FakeScraper
 
 
@@ -101,6 +105,33 @@ def test_list_no_data_message(runner, mock_io):
     result = runner.invoke(cli, ["list"])
     assert result.exit_code == 0
     assert "Unable to fetch" in result.output
+
+
+def test_list_reports_specific_block_reason(runner, mock_io):
+    """A classified block must reach the user, not the generic fallback.
+
+    Telling someone the site "may be unavailable" when we know their IP was
+    firewalled sends them debugging the wrong thing.
+    """
+    from doral_courts.core.scraper import AntiBotBlock
+
+    mock_io.courts_to_return = []
+    mock_io.block_to_return = AntiBotBlock(
+        kind="waf", message="Blocked at the network edge; try a different network."
+    )
+    result = runner.invoke(cli, ["list"])
+    assert result.exit_code == 0
+    assert "different network" in result.output
+    # The vague fallback must not be shown when we have a real reason.
+    assert "may be temporarily" not in result.output
+
+
+def test_list_falls_back_when_block_unknown(runner, mock_io):
+    mock_io.courts_to_return = []
+    mock_io.block_to_return = None
+    result = runner.invoke(cli, ["list"])
+    assert result.exit_code == 0
+    assert "may be temporarily" in result.output
 
 
 def test_list_success_displays_court(runner, mock_io):

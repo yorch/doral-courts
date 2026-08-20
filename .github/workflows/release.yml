@@ -1,0 +1,81 @@
+name: Release
+
+# Publishes to PyPI when a version tag is pushed, e.g.:
+#
+#     git tag v0.3.0 && git push origin v0.3.0
+#
+# Authentication uses PyPI Trusted Publishing (OIDC), so no API token is stored
+# in the repository. See docs/development.md ("Releasing") for the one-time PyPI
+# configuration this requires.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Build and publish to PyPI
+    runs-on: ubuntu-latest
+
+    # The environment name must match the one configured on the PyPI trusted
+    # publisher, and lets you attach manual approval rules to releases.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/doral-courts
+
+    permissions:
+      # Required to mint the OIDC token that PyPI exchanges for upload rights.
+      id-token: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
+      # setup-uv stopped publishing floating major tags after v7, so this is
+      # pinned to an exact version rather than `@v10`.
+      - name: Install uv
+        uses: astral-sh/setup-uv@v10.0.1
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      # Catches the common mistake of tagging a version that does not match
+      # pyproject.toml, which would otherwise publish a surprising version.
+      - name: Verify tag matches package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Tag v${tag} does not match pyproject version ${version}"
+            exit 1
+          fi
+          echo "Tag and package version agree: ${version}"
+
+      # Re-run the gates here as well as on PRs: a tag can point at any commit,
+      # including one that never went through a pull request.
+      - name: Ruff check
+        run: uv run ruff check src/ tests/ scripts/
+
+      - name: Ruff format check
+        run: uv run ruff format --check src/ tests/ scripts/
+
+      - name: Mypy type check
+        run: uv run mypy src/
+
+      - name: Run tests
+        run: uv run pytest -v --cov=src --cov-report=term-missing
+
+      - name: Build package
+        run: uv build
+
+      - name: Verify CLI entry point
+        run: uv run doral-courts --help
+
+      - name: Publish to PyPI
+        run: uv publish --trusted-publishing always

@@ -1,5 +1,6 @@
 import logging
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
@@ -11,6 +12,98 @@ from ..utils.logger import get_logger
 from .html_extractor import Court, CourtAvailabilityHTMLExtractor
 
 logger = get_logger(__name__)
+
+# Cloudflare's WAF block page ("Sorry, you have been blocked") is returned when a
+# request is denied at the edge -- by IP reputation, a firewall rule, or country
+# blocking. It carries no JavaScript challenge, so no JS interpreter and no
+# scraping library can get past it; the remedy is a different network, not
+# different code. Keeping it distinct from a challenge failure matters because
+# the two need opposite responses from the user.
+_WAF_BLOCK_MARKERS = (
+    "sorry, you have been blocked",
+    "attention required! | cloudflare",
+)
+
+# Markers for an actual interactive challenge, which a JS interpreter is
+# supposed to solve. Seeing these means cloudscraper engaged but did not win.
+_CHALLENGE_MARKERS = (
+    "checking your browser",
+    "jschl",
+    "cf_chl",
+    "challenge-platform",
+    "turnstile",
+)
+
+
+@dataclass(frozen=True)
+class AntiBotBlock:
+    """A classified anti-bot rejection.
+
+    Attributes:
+        kind: One of ``"waf"``, ``"rate_limit"``, ``"challenge"``, ``"http"``.
+        message: A user-facing explanation of what to do about it.
+    """
+
+    kind: str
+    message: str
+
+
+def classify_anti_bot_response(status_code: int, body: str) -> Optional[AntiBotBlock]:
+    """Classify a failed response so callers can explain it accurately.
+
+    Distinguishes an edge-level WAF/IP block -- which no scraping library can
+    bypass -- from a JavaScript challenge that cloudscraper attempted and lost,
+    from plain rate limiting. Reporting these identically makes the failure look
+    like a library problem when it usually is not.
+
+    Args:
+        status_code: HTTP status code of the response.
+        body: Response body text (may be empty).
+
+    Returns:
+        An ``AntiBotBlock`` describing the rejection, or ``None`` when the
+        response is not a rejection at all (status < 400).
+    """
+    if status_code < 400:
+        return None
+
+    lowered = (body or "").lower()
+
+    if any(marker in lowered for marker in _WAF_BLOCK_MARKERS):
+        return AntiBotBlock(
+            kind="waf",
+            message=(
+                "Blocked by Cloudflare at the network edge (no challenge was"
+                " offered). This is an IP/firewall block, not a solvable"
+                " challenge -- no scraping library can bypass it. Try a"
+                " different network; datacenter, VPN, and cloud IPs are"
+                " commonly blocked."
+            ),
+        )
+
+    if status_code == 429:
+        return AntiBotBlock(
+            kind="rate_limit",
+            message=(
+                "Rate limited by the website (HTTP 429). Wait before retrying"
+                " and reduce polling frequency."
+            ),
+        )
+
+    if any(marker in lowered for marker in _CHALLENGE_MARKERS):
+        return AntiBotBlock(
+            kind="challenge",
+            message=(
+                "A Cloudflare JavaScript challenge was presented but not"
+                " solved. This is the case where an updated bypass library"
+                " could help."
+            ),
+        )
+
+    return AntiBotBlock(
+        kind="http",
+        message=f"The website returned HTTP {status_code}.",
+    )
 
 
 class Scraper:
@@ -59,10 +152,21 @@ class Scraper:
         self.html_extractor = CourtAvailabilityHTMLExtractor()
         self.last_request_urls: list[str] = []  # Actual URLs from recent requests
         self._csrf_token: Optional[str] = None  # Cached per fetch operation
+        # Set when a request is rejected by the anti-bot layer, so callers can
+        # explain *why* rather than reporting a generic failure.
+        self.last_block: Optional[AntiBotBlock] = None
 
-        # Create cloudscraper session to bypass Cloudflare protection
+        # Create cloudscraper session to bypass Cloudflare protection.
+        #
+        # `interpreter` is pinned rather than left implicit. cloudscraper's own
+        # default is "native" (pure Python, works on current CPython), but the
+        # maintained fork `cloudscraper-enhanced` defaults to "js2py", and js2py
+        # raises `RuntimeError: Your python version made changes to the bytecode`
+        # on Python 3.13+. Naming the interpreter here means swapping the
+        # dependency can never silently move us onto a broken code path.
         self.session = cloudscraper.create_scraper(
             browser={"browser": "chrome", "platform": "darwin", "desktop": True},
+            interpreter="native",
             debug=False,  # Disable debug output
         )
 
@@ -132,14 +236,19 @@ class Scraper:
             # or the anti-bot layer blocked us — surface that as a failure
             # instead of silently proceeding to an empty result set.
             if response.status_code < 400:
+                self.last_block = None
                 logger.info("Session initialized successfully with cloudscraper")
                 return True
             else:
+                # A 4xx/5xx here means the anti-bot layer rejected us. Classify
+                # it so the user is told whether this is fixable on their side.
+                self.last_block = classify_anti_bot_response(
+                    response.status_code, response.text
+                )
                 logger.warning(
-                    "Home page returned status %d during session"
-                    " initialization; the site may be blocking automated"
-                    " requests",
+                    "Home page returned status %d during session initialization: %s",
                     response.status_code,
+                    self.last_block.message if self.last_block else "",
                 )
                 return False
 
@@ -421,7 +530,7 @@ class Scraper:
                                     current_page + 1,
                                     max_page,
                                 )
-                        except (ValueError, TypeError):
+                        except ValueError, TypeError:
                             logger.debug(
                                 "Could not determine last page, stopping pagination"
                             )
@@ -429,17 +538,15 @@ class Scraper:
 
                     page += 1
 
-                elif response.status_code == 403:
-                    logger.error(
-                        "Received 403 Forbidden - website is"
-                        " blocking automated requests"
-                    )
-                    logger.error(
-                        "The website has anti-bot protection that prevents access"
-                    )
-                    break
                 else:
-                    logger.error("Website returned status %d", response.status_code)
+                    self.last_block = classify_anti_bot_response(
+                        response.status_code, response.text
+                    )
+                    logger.error(
+                        "Website returned status %d: %s",
+                        response.status_code,
+                        self.last_block.message if self.last_block else "",
+                    )
                     break
 
         except requests.RequestException as e:

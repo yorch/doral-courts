@@ -70,10 +70,16 @@ def fetch_and_store(
         if not courts:
             logger.error("No court data could be retrieved from website")
             console.print("[red]Unable to fetch court data from website.[/red]")
-            console.print(
-                "[yellow]The website may be temporarily"
-                " unavailable or blocking requests.[/yellow]"
-            )
+            # When the anti-bot layer rejected us we know why; say so instead of
+            # guessing. A WAF/IP block and a lost JS challenge need different
+            # responses from the user.
+            if scraper.last_block is not None:
+                console.print(f"[yellow]{scraper.last_block.message}[/yellow]")
+            else:
+                console.print(
+                    "[yellow]The website may be temporarily"
+                    " unavailable or blocking requests.[/yellow]"
+                )
             return [], source_url
 
         logger.info("Successfully fetched %d courts from website", len(courts))

@@ -25,7 +25,7 @@ The Doral Courts CLI is a Python application that scrapes court availability dat
 
 ### Requirements
 
-- Python 3.13 or higher
+- Python 3.14 or higher
 - Internet connection for fetching court data
 
 ### Installation

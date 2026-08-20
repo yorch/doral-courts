@@ -155,7 +155,7 @@ Each command module:
 
 ### Prerequisites
 
-- Python 3.13+
+- Python 3.14+
 - uv (recommended) or pip
 - Git
 
@@ -327,6 +327,49 @@ scraper = Scraper()
 - **Pagination**: Efficient handling of multi-page results
 - **Deduplication**: Prevent duplicate data in database
 - **Rate Limiting**: Respectful web scraping practices
+
+## Releasing
+
+Releases are published to PyPI by `.github/workflows/release.yml`, which is
+triggered by pushing a version tag. Authentication uses **PyPI Trusted
+Publishing** (OIDC), so no API token is stored in the repository.
+
+### One-time PyPI setup
+
+This must be done once by a PyPI owner of the `doral-courts` project before the
+first automated release:
+
+1. Go to the project on PyPI -> **Manage** -> **Publishing**.
+2. Add a new **GitHub** trusted publisher with:
+   - Owner: `yorch`
+   - Repository: `doral-courts`
+   - Workflow name: `release.yml`
+   - Environment name: `pypi`
+3. In the GitHub repository, create an environment named `pypi`
+   (**Settings** -> **Environments**). Add reviewers there if you want releases
+   to require manual approval.
+
+The environment name must match on both sides or the OIDC exchange is rejected.
+
+### Cutting a release
+
+1. Update `version` in `pyproject.toml`.
+2. Move the `[Unreleased]` section of `CHANGELOG.md` under the new version.
+3. Commit and merge to `main`.
+4. Tag and push:
+
+   ```bash
+   git tag v0.3.0
+   git push origin v0.3.0
+   ```
+
+The workflow verifies the tag matches `pyproject.toml` (a mismatch fails the
+job rather than publishing an unexpected version), re-runs lint, type checks,
+and tests, builds the sdist and wheel, and publishes.
+
+Because the build and upload happen on a current toolchain, the core metadata
+version produced by Hatchling is always one the uploader understands; there is
+no need to keep a local `twine` up to date.
 
 ## Contributing
 
