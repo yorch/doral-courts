@@ -1075,7 +1075,11 @@ doral-courts slots --court "DLP Tennis Court 1" --available-only
 - **beautifulsoup4** (>=4.15.0): HTML parsing
 - **click** (>=8.4.2): CLI framework
 - **rich** (>=15.0.0): Terminal formatting
-- **cloudscraper** (>=1.2.71): Cloudflare bypass
+- **cloudscraper** (>=1.2.71): Cloudflare bypass. This is the newest release
+  published under that name; the maintained fork is a separate package,
+  `cloudscraper-enhanced`, which is *not* used here because it defaults to the
+  `js2py` interpreter, and js2py is broken on Python 3.13+. The session pins
+  `interpreter="native"` so this cannot change silently.
 - **pyyaml** (>=6.0.3): YAML configuration file support
 
 ### Optional Dependencies

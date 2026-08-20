@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from doral_courts.core.scraper import Scraper
+from doral_courts.core.scraper import Scraper, classify_anti_bot_response
 
 from ..conftest import build_search_page
 
@@ -90,3 +90,84 @@ def test_failed_session_returns_empty(monkeypatch):
     assert courts == []
     assert html == ""
     s.session.get.assert_not_called()
+
+
+class TestAntiBotClassification:
+    """The scraper must distinguish rejections a user can act on.
+
+    An edge-level WAF/IP block is unfixable in code, while a lost JavaScript
+    challenge is the one case where a different bypass library would help.
+    Collapsing both into one vague message sends users chasing the wrong fix.
+    """
+
+    WAF_BODY = (
+        "<html><head><title>Attention Required! | Cloudflare</title></head>"
+        "<body>Sorry, you have been blocked</body></html>"
+    )
+    CHALLENGE_BODY = (
+        "<html><body>Checking your browser before accessing"
+        "<script>cf_chl_opt</script></body></html>"
+    )
+
+    def test_success_is_not_a_block(self):
+        assert classify_anti_bot_response(200, "<html>ok</html>") is None
+        assert classify_anti_bot_response(302, "") is None
+
+    def test_waf_block_detected(self):
+        block = classify_anti_bot_response(403, self.WAF_BODY)
+        assert block is not None
+        assert block.kind == "waf"
+        # The message must tell the user this is not solvable by better code.
+        assert "different network" in block.message
+
+    def test_challenge_is_not_confused_with_waf(self):
+        block = classify_anti_bot_response(403, self.CHALLENGE_BODY)
+        assert block is not None
+        assert block.kind == "challenge"
+
+    def test_rate_limit_detected(self):
+        block = classify_anti_bot_response(429, "slow down")
+        assert block is not None
+        assert block.kind == "rate_limit"
+
+    def test_waf_takes_precedence_over_rate_limit_status(self):
+        # A WAF block served with a 429 is still a WAF block: the body is the
+        # stronger signal, and the advice differs.
+        block = classify_anti_bot_response(429, self.WAF_BODY)
+        assert block is not None
+        assert block.kind == "waf"
+
+    def test_unrecognised_error_still_classified(self):
+        block = classify_anti_bot_response(500, "<html>oops</html>")
+        assert block is not None
+        assert block.kind == "http"
+        assert "500" in block.message
+
+    def test_empty_body_does_not_crash(self):
+        block = classify_anti_bot_response(403, "")
+        assert block is not None
+        assert block.kind == "http"
+
+
+class TestScraperRecordsBlocks:
+    def test_session_failure_records_waf_block(self, monkeypatch):
+        s = Scraper()
+        s.session.get = MagicMock(
+            return_value=FakeResponse(
+                TestAntiBotClassification.WAF_BODY, status_code=403
+            )
+        )
+        assert s._initialize_session() is False
+        assert s.last_block is not None
+        assert s.last_block.kind == "waf"
+
+    def test_successful_session_clears_block(self, monkeypatch):
+        s = Scraper()
+        s.session.get = MagicMock(return_value=FakeResponse("<html>ok</html>"))
+        assert s._initialize_session() is True
+        assert s.last_block is None
+
+    def test_native_interpreter_is_pinned(self):
+        # Guards against a dependency swap silently moving us onto js2py,
+        # which is broken on Python 3.13+.
+        assert Scraper().session.interpreter == "native"

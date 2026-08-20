@@ -5,9 +5,48 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0]
+
+### Removed
+
+- **Python 3.13 support.** `requires-python` is now `>=3.14`. Existing 3.13
+  users must upgrade; the CLI is tested only against 3.14. Note that
+  `core/scraper.py` now contains PEP 758 syntax (unparenthesized `except`
+  groups), applied by `ruff format` under `target-version = "py314"`, so the
+  file no longer parses on 3.13 at all.
+
+### Added
+
+- **Automated PyPI releases** via `.github/workflows/release.yml`, triggered by
+  pushing a `v*` tag. Uses PyPI Trusted Publishing (OIDC), so no API token is
+  stored in the repo. The job refuses to publish when the tag does not match
+  the version in `pyproject.toml`, and re-runs lint, type checks, and tests
+  before uploading. One-time PyPI setup is documented in
+  `docs/development.md`.
+- **Anti-bot failure classification.** `classify_anti_bot_response()` separates
+  a Cloudflare WAF/IP block from a lost JavaScript challenge from plain rate
+  limiting, and `Scraper.last_block` carries the result to the CLI. Previously
+  every failure produced the same vague "the website may be blocking automated
+  requests", which sends users chasing the wrong fix: a WAF block is an IP
+  decision that no scraping library can bypass, while a lost challenge is the
+  one case where a different bypass library would help.
 
 ### Changed
+
+- **Python 3.14** is now the tested and required version: CI matrix, ruff
+  `target-version`, mypy `python_version`, `.python-version`, and the trove
+  classifier all move to 3.14.
+- **`interpreter="native"` is pinned explicitly** when creating the cloudscraper
+  session. This is already cloudscraper's default, but the fork
+  `cloudscraper-enhanced` defaults to `js2py`, which raises
+  `RuntimeError: Your python version made changes to the bytecode` on Python
+  3.13+. The pin (and a test asserting it) prevents a future dependency swap
+  from silently selecting a broken interpreter.
+- `cloudscraper` stays at 1.2.71 — the newest release published under that
+  name. The maintained fork was evaluated and rejected; see
+  `docs/reference.md` and `AGENTS.md` for the reasoning.
+
+### Changed (from the preceding dependency upgrade)
 
 - **Dependencies upgraded to latest**, including four major bumps:
   `mypy` 1.x → 2.3.1, `rich` 14.x → 15.0.0, `pytest` 8.x → 9.1.1, and

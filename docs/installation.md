@@ -4,7 +4,7 @@ This guide covers different ways to install and set up the Doral Courts CLI appl
 
 ## Prerequisites
 
-- Python 3.13 or higher
+- Python 3.14 or higher
 - Internet connection (for fetching court data)
 
 ## Installation Methods
@@ -129,7 +129,7 @@ The application creates the following directories:
    ```bash
    # Check Python version
    python --version
-   # Should be 3.13 or higher
+   # Should be 3.14 or higher
    ```
 
 ### Getting Help

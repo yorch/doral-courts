@@ -139,6 +139,32 @@ The scraper handles complex challenges:
 - **CSRF Tokens**: Extracts and uses CSRF tokens for authenticated requests
 - **Error Handling**: Graceful degradation when website is unavailable
 
+### Anti-bot failure modes
+
+`classify_anti_bot_response()` in `core/scraper.py` separates two failures that
+look alike but need opposite responses, and `Scraper.last_block` carries the
+result so the CLI can report it:
+
+- **WAF / IP block** (`kind="waf"`) - Cloudflare's "Sorry, you have been
+  blocked" page, served at the edge with no challenge attached. No scraping
+  library can bypass this; it is an IP reputation or firewall decision.
+  Datacenter, VPN, and CI IPs are routinely blocked, which is why scraping
+  cannot be tested from CI.
+- **JS challenge** (`kind="challenge"`) - a real challenge that cloudscraper
+  attempted and lost. This is the only case where a different or updated bypass
+  library would help.
+
+Do not "fix" a WAF block by changing scraping libraries.
+
+### The `interpreter="native"` pin
+
+`create_scraper()` passes `interpreter="native"` explicitly. That is already
+cloudscraper's default, but the pin is deliberate: the maintained fork
+`cloudscraper-enhanced` defaults to `js2py`, and js2py raises
+`RuntimeError: Your python version made changes to the bytecode` on Python
+3.13+. Naming the interpreter means a future dependency swap cannot silently
+move the project onto a dead code path. A test asserts this pin holds.
+
 ## Database Integration
 
 - **Multiple Backends**: SQLite (default, `doral_courts.db`) or PostgreSQL, selected
@@ -202,7 +228,7 @@ All display functions use Rich library and should:
 
 Project uses `pyproject.toml` for all configuration:
 
-- Python 3.13+ required
+- Python 3.14+ required
 - UV package manager recommended
 - Ruff for linting and formatting
 - MyPy for type checking
